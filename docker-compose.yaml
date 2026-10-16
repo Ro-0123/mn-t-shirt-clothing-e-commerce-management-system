@@ -1,0 +1,60 @@
+services:
+  app:
+    build: .
+    image: ${APP_NAME:-mnstore}:latest
+    container_name: ${APP_NAME:-mnstore}
+    restart: unless-stopped
+    volumes:
+      - ./:/app
+      - node_modules:/app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mysql
+    env_file:
+      - .env
+    environment:
+      # Overrides .env's DB_HOST so the app reaches MySQL by its Docker
+      # network hostname instead of localhost/XAMPP. Leave .env itself set
+      # to whatever you use for native (non-Docker) `npm run dev`.
+      DB_HOST: mysql
+      # Windows bind mounts don't reliably deliver native filesystem change
+      # events into the Linux container, so Vite's watcher can miss edits
+      # and keep serving stale content. Polling fixes that.
+      CHOKIDAR_USEPOLLING: "true"
+
+  mysql:
+    image: mariadb:10.11.13
+    container_name: mysql_${APP_NAME:-mnstore}
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: mn_tshirt_ecommerce
+      TZ: UTC
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      # Host port 3307 to avoid clashing with a locally running MySQL/XAMPP
+      # on the default 3306. Containers still reach it via "mysql:3306".
+      - "3307:3306"
+
+  phpmyadmin:
+    image: phpmyadmin:5.2.2
+    container_name: phpmyadmin_${APP_NAME:-mnstore}
+    restart: unless-stopped
+    depends_on:
+      - mysql
+    environment:
+      UPLOAD_LIMIT: 50M
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: root
+    ports:
+      - "8080:80"
+
+volumes:
+  mysql_data:
+    name: ${APP_NAME:-mnstore}_mysql_data
+  node_modules:
+    name: ${APP_NAME:-mnstore}_node_modules

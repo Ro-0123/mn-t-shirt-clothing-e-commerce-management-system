@@ -1,0 +1,6 @@
+{
+  "name": "MN T-Shirt Clothing E-Commerce Management System",
+  "description": "Full-stack Vue.js & Node.js E-Commerce platform for MN T-Shirt Clothing with Customer storefront, Wishlist, Cart, Checkout, and Admin/Staff Backoffice for managing products, stocks, categories, suppliers, orders, deliveries, users, and reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

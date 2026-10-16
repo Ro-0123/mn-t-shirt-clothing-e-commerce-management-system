@@ -79,40 +79,6 @@
       </div>
     </section>
 
-    <!-- Categories Grid -->
-    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-16">
-      <div class="flex items-end justify-between mb-8">
-        <div>
-          <span class="text-xs font-bold uppercase tracking-wider text-[var(--text-faint)]">Curated lines</span>
-          <h2 class="font-display text-2xl sm:text-3xl text-[var(--text)]">Shop by category</h2>
-        </div>
-        <router-link to="/shop" class="text-xs sm:text-sm font-semibold text-[var(--accent)] hover:text-[var(--accent-hover)] flex items-center gap-1">
-          <span>View all</span> <i class="fa-solid fa-chevron-right text-[10px]"></i>
-        </router-link>
-      </div>
-
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
-        <router-link
-          v-for="cat in categories"
-          :key="cat.id"
-          :to="{ path: '/shop', query: { category: cat.slug } }"
-          class="group p-5 border border-[var(--border)] hover:border-[var(--text)] transition-all duration-200 flex flex-col justify-between rounded-sm"
-        >
-          <div class="w-10 h-10 rounded-full border border-[var(--border-strong)] text-[var(--text-muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)] flex items-center justify-center text-lg transition-colors">
-            <i :class="`fa-solid ${cat.icon}`"></i>
-          </div>
-          <div class="mt-6">
-            <h3 class="font-bold text-sm text-[var(--text)]">{{ cat.name }}</h3>
-            <p class="text-xs text-[var(--text-muted)] mt-1 line-clamp-1">{{ cat.description }}</p>
-            <div class="flex items-center justify-between mt-3 pt-3 border-t border-[var(--border)] text-[11px] font-semibold text-[var(--text-muted)]">
-              <span>{{ cat.itemCount || 8 }} products</span>
-              <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
-            </div>
-          </div>
-        </router-link>
-      </div>
-    </section>
-
     <!-- Best Sellers / Featured Products -->
     <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-16">
       <div class="flex items-end justify-between mb-8">
@@ -217,6 +183,40 @@
           </div>
         </div>
         </div>
+      </div>
+    </section>
+
+    <!-- Categories Grid -->
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-16">
+      <div class="flex items-end justify-between mb-8">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-[var(--text-faint)]">Curated lines</span>
+          <h2 class="font-display text-2xl sm:text-3xl text-[var(--text)]">Shop by category</h2>
+        </div>
+        <router-link to="/shop" class="text-xs sm:text-sm font-semibold text-[var(--accent)] hover:text-[var(--accent-hover)] flex items-center gap-1">
+          <span>View all</span> <i class="fa-solid fa-chevron-right text-[10px]"></i>
+        </router-link>
+      </div>
+
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+        <router-link
+          v-for="cat in categories"
+          :key="cat.id"
+          :to="{ path: '/shop', query: { category: cat.slug } }"
+          class="group p-5 border border-[var(--border)] hover:border-[var(--text)] transition-all duration-200 flex flex-col justify-between rounded-sm"
+        >
+          <div class="w-10 h-10 rounded-full border border-[var(--border-strong)] text-[var(--text-muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)] flex items-center justify-center text-lg transition-colors">
+            <i :class="`fa-solid ${cat.icon}`"></i>
+          </div>
+          <div class="mt-6">
+            <h3 class="font-bold text-sm text-[var(--text)]">{{ cat.name }}</h3>
+            <p class="text-xs text-[var(--text-muted)] mt-1 line-clamp-1">{{ cat.description }}</p>
+            <div class="flex items-center justify-between mt-3 pt-3 border-t border-[var(--border)] text-[11px] font-semibold text-[var(--text-muted)]">
+              <span>{{ cat.itemCount || 8 }} products</span>
+              <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+            </div>
+          </div>
+        </router-link>
       </div>
     </section>
 

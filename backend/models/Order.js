@@ -24,15 +24,7 @@ const Order = sequelize.define('Order', {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
   },
-  tax: {
-    type: DataTypes.DECIMAL(10, 2),
-    defaultValue: 0,
-  },
   shippingCost: {
-    type: DataTypes.DECIMAL(10, 2),
-    defaultValue: 0,
-  },
-  discountAmount: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 0,
   },
@@ -56,7 +48,7 @@ const Order = sequelize.define('Order', {
     defaultValue: 0,
   },
   paymentMethod: {
-    type: DataTypes.ENUM('credit_card', 'debit_card', 'paypal', 'bank_transfer', 'cash_on_delivery', 'payway_card', 'payway_qr', 'store_credit'),
+    type: DataTypes.ENUM('paypal', 'bank_transfer', 'cash_on_delivery', 'payway_card', 'payway_qr', 'store_credit'),
   },
   shippingAddress: {
     type: DataTypes.JSON,

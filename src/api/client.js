@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getStoredToken } from '@/functions/authStorage';
 
 const apiClient = axios.create({
   baseURL: '/api',
@@ -10,7 +11,7 @@ const apiClient = axios.create({
 
 // Request Interceptor: Attach Auth Token
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('mn_auth_token');
+  const token = getStoredToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

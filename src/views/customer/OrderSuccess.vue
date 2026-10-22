@@ -129,10 +129,6 @@
             <span>Subtotal</span>
             <span class="font-bold text-[var(--text)]">${{ (order?.subtotal || 0).toFixed(2) }}</span>
           </div>
-          <div v-if="order?.discount > 0" class="flex justify-between text-[var(--accent)] font-bold">
-            <span>Discount (Promo)</span>
-            <span>-${{ (order?.discount || 0).toFixed(2) }}</span>
-          </div>
           <div class="flex justify-between text-[var(--text-muted)]">
             <span>Courier Shipping</span>
             <span class="font-bold text-[var(--text)]">

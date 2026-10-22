@@ -111,8 +111,10 @@ export default {
       }
     },
 
-    async updateStock({ dispatch }, { productId, quantity }) {
-      return dispatch('restockProduct', { productId, quantity });
+    // operation: 'add' | 'remove' | 'set' (passing it through matters -- without
+    // it, adding 5 would SET the stock to 5)
+    async updateStock({ dispatch }, { productId, quantity, operation = 'set' }) {
+      return dispatch('restockProduct', { productId, quantity, operation });
     },
 
     async createProduct({ dispatch }, data) {

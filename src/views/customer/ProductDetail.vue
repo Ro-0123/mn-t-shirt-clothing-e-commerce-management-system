@@ -25,12 +25,41 @@
       <!-- Left: Image Gallery -->
       <div class="lg:col-span-7 space-y-4">
         <!-- Main Image -->
-        <div class="relative bg-[var(--bg-alt)] overflow-hidden aspect-4/3 border border-[var(--border)] rounded-sm">
+        <div
+          class="relative bg-[var(--bg-alt)] overflow-hidden aspect-4/3 border border-[var(--border)] rounded-sm select-none"
+          tabindex="0"
+          @keydown.left.prevent="prevImage"
+          @keydown.right.prevent="nextImage"
+          @touchstart.passive="onTouchStart"
+          @touchend="onTouchEnd"
+        >
           <img
             :src="activeImage"
             :alt="product.name"
             class="w-full h-full object-cover transition-all duration-300"
+            draggable="false"
           />
+
+          <!-- Prev / Next arrows (only when there are multiple images) -->
+          <template v-if="hasMultipleImages">
+            <button
+              @click="prevImage"
+              class="absolute left-0 top-1/2 -translate-y-1/2 w-11 h-11 bg-black/85 hover:bg-black text-white flex items-center justify-center transition-colors cursor-pointer"
+              aria-label="Previous image"
+            >
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <button
+              @click="nextImage"
+              class="absolute right-0 top-1/2 -translate-y-1/2 w-11 h-11 bg-black/85 hover:bg-black text-white flex items-center justify-center transition-colors cursor-pointer"
+              aria-label="Next image"
+            >
+              <i class="fa-solid fa-chevron-right"></i>
+            </button>
+            <span class="absolute bottom-3 right-3 px-2 py-0.5 bg-black/60 text-white text-[11px] font-semibold rounded-sm">
+              {{ activeIndex + 1 }} / {{ product.images.length }}
+            </span>
+          </template>
 
           <div class="absolute top-4 left-4 flex flex-col gap-2">
             <span v-if="product.discountPercentage > 0" class="px-2.5 py-1 bg-[var(--accent)] text-white font-black text-xs uppercase tracking-wider rounded-sm">
@@ -226,6 +255,29 @@ export default {
     const isLoading = computed(() => store.getters['products/isLoading']);
     const isInWishlist = computed(() => product.value ? store.getters['wishlist/isInWishlist'](product.value.id) : false);
 
+    // Image gallery navigation
+    const images = computed(() => product.value?.images || []);
+    const hasMultipleImages = computed(() => images.value.length > 1);
+    const activeIndex = computed(() => Math.max(0, images.value.indexOf(activeImage.value)));
+
+    const showImageAt = (idx) => {
+      const len = images.value.length;
+      if (!len) return;
+      activeImage.value = images.value[(idx + len) % len];
+    };
+    const prevImage = () => showImageAt(activeIndex.value - 1);
+    const nextImage = () => showImageAt(activeIndex.value + 1);
+
+    let touchStartX = 0;
+    const onTouchStart = (e) => {
+      touchStartX = e.changedTouches[0].clientX;
+    };
+    const onTouchEnd = (e) => {
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      if (Math.abs(dx) < 40) return;
+      dx > 0 ? prevImage() : nextImage();
+    };
+
     const loadProduct = async () => {
       const id = route.params.id;
       const data = await store.dispatch('products/fetchProductById', id);
@@ -277,6 +329,12 @@ export default {
       product,
       isLoading,
       activeImage,
+      activeIndex,
+      hasMultipleImages,
+      prevImage,
+      nextImage,
+      onTouchStart,
+      onTouchEnd,
       selectedSize,
       selectedColor,
       quantity,

@@ -111,7 +111,7 @@ export default {
 
     const handleSubscribe = () => {
       if (emailInput.value) {
-        SuccessToast('Subscribed! Check your inbox for code "MN20"');
+        SuccessToast('Subscribed! Thanks for joining our newsletter');
         emailInput.value = '';
       }
     };

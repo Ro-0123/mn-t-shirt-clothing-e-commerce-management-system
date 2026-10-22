@@ -71,7 +71,7 @@
               />
             </div>
 
-            <div class="space-y-1">
+            <div class="sm:col-span-2 space-y-1">
               <label class="font-bold text-[var(--text)]">City / Province *</label>
               <select
                 v-model="form.city"
@@ -84,16 +84,6 @@
                 <option value="Kampot">Kampot</option>
                 <option value="Kandal">Kandal</option>
               </select>
-            </div>
-
-            <div class="space-y-1">
-              <label class="font-bold text-[var(--text)]">Postal / Zip Code</label>
-              <input
-                type="text"
-                v-model="form.zipCode"
-                class="w-full px-3 py-2 bg-[var(--bg-alt)] border border-[var(--border)] rounded-sm text-[var(--text)] placeholder-[var(--text-faint)] focus:outline-none focus:border-[var(--accent)] font-medium"
-                placeholder="12000"
-              />
             </div>
 
             <div class="sm:col-span-2 space-y-1">
@@ -125,6 +115,7 @@
                 <p class="font-bold text-[var(--text)]">MN Express Dispatch</p>
                 <p class="text-[11px] text-[var(--text-muted)] mt-0.5">Phnom Penh intra-city, 3-hour expedited delivery</p>
               </div>
+              <span class="font-bold text-[var(--text)]">${{ DELIVERY_FEE.toFixed(2) }}</span>
             </label>
 
             <label
@@ -136,6 +127,7 @@
                 <p class="font-bold text-[var(--text)]">J&T Express Partner</p>
                 <p class="text-[11px] text-[var(--text-muted)] mt-0.5">Provincial hub routing &mdash; 24h SLA (Siem Reap, Battambang, Sihanoukville)</p>
               </div>
+              <span class="font-bold text-[var(--text)]">${{ DELIVERY_FEE.toFixed(2) }}</span>
             </label>
 
             <label
@@ -147,6 +139,7 @@
                 <p class="font-bold text-[var(--text)]">VET Express Dispatch</p>
                 <p class="text-[11px] text-[var(--text-muted)] mt-0.5">Regional bus & cargo transit &mdash; 48h SLA for remote provinces</p>
               </div>
+              <span class="font-bold text-[var(--text)]">${{ DELIVERY_FEE.toFixed(2) }}</span>
             </label>
           </div>
         </div>
@@ -179,7 +172,7 @@
             >
               <input type="radio" v-model="paymentMethod" value="ABA_QR" class="accent-[var(--accent)]" />
               <div class="flex-1">
-                <p class="font-bold text-[var(--text)]">ABA Pay / KHQR</p>
+                <p class="font-bold text-[var(--text)]">KHQR</p>
                 <p class="text-[11px] text-[var(--text-muted)] mt-0.5">Scan via ABA Mobile, Bakong, or any bank</p>
               </div>
             </label>
@@ -191,8 +184,8 @@
             >
               <input type="radio" v-model="paymentMethod" value="PAYWAY_QR" class="accent-[var(--accent)]" />
               <div class="flex-1">
-                <p class="font-bold text-[var(--text)]">ABA PayWay QR</p>
-                <p class="text-[11px] text-[var(--text-muted)] mt-0.5">Scan via ABA PayWay's own checkout</p>
+                <p class="font-bold text-[var(--text)]">ABA</p>
+                <p class="text-[11px] text-[var(--text-muted)] mt-0.5">Scan or open with ABA Mobile</p>
               </div>
             </label>
 
@@ -264,9 +257,9 @@
               <span class="font-bold text-[var(--text)]">${{ subtotal.toFixed(2) }}</span>
             </div>
 
-            <div v-if="discountAmount > 0" class="flex justify-between text-[var(--accent)] font-bold">
-              <span>Discount</span>
-              <span>-${{ discountAmount.toFixed(2) }}</span>
+            <div class="flex justify-between text-[var(--text-muted)]">
+              <span>Delivery <span class="text-[var(--text-faint)]">({{ courierName }})</span></span>
+              <span class="font-bold text-[var(--text)]">${{ deliveryFee.toFixed(2) }}</span>
             </div>
 
             <div class="divider flex justify-between text-lg font-black text-[var(--text)] pt-3">
@@ -409,6 +402,10 @@ import { LoadingModal, CloseModal, ErrorToast } from '@/functions/sweetalert';
 
 const ONLINE_PAYMENT_METHODS = ['ABA_QR', 'PAYWAY_QR', 'PAYWAY_CARD'];
 
+// Flat delivery fee per order, whichever courier is chosen.
+// Keep in sync with DELIVERY_FEE in backend/controllers/orderController.js.
+const DELIVERY_FEE = 0; // TEMP for testing -- normally 2
+
 export default {
   name: 'Checkout',
   setup() {
@@ -432,9 +429,9 @@ export default {
     const cartItems = computed(() => store.getters['cart/cartItems']);
     const totalCount = computed(() => store.getters['cart/totalItemsCount']);
     const subtotal = computed(() => store.getters['cart/subtotal']);
-    const discountAmount = computed(() => store.getters['cart/discountAmount']);
-    const totalAmount = computed(() => store.getters['cart/totalAmount']);
-    const appliedPromo = computed(() => store.getters['cart/appliedPromo']);
+    // Cart total plus the flat delivery fee for the chosen courier
+    const deliveryFee = computed(() => (cartItems.value.length > 0 ? DELIVERY_FEE : 0));
+    const totalAmount = computed(() => Math.round((store.getters['cart/totalAmount'] + deliveryFee.value) * 100) / 100);
     // Store credit is used automatically; only what's left goes to a payment gateway.
     // The backend recomputes all of this itself -- these are just for display.
     const storeCredit = computed(() => Number(user.value?.storeCredit || 0));
@@ -591,9 +588,8 @@ export default {
       name: user.value?.name || 'Chea Rithy',
       phone: user.value?.phone || '+855 92 111 222',
       email: user.value?.email || 'customer@mntshirt.com',
-      street: user.value?.address || 'Street 271, Sangkat Toul Tompoung',
+      street: user.value?.address || '',
       city: 'Phnom Penh',
-      zipCode: '12310',
       notes: ''
     });
 
@@ -619,15 +615,13 @@ export default {
           shippingAddress: {
             street: form.value.street,
             city: form.value.city,
-            country: 'Cambodia',
-            zipCode: form.value.zipCode
+            country: 'Cambodia'
           },
           items: cartItems.value,
           paymentMethod: coveredByCredit.value ? 'STORE_CREDIT' : paymentMethod.value,
           khqrMd5: paymentMethod.value === 'ABA_QR' ? khqrMd5.value : undefined,
           paywayTranId: (paymentMethod.value === 'PAYWAY_QR' || paymentMethod.value === 'PAYWAY_CARD') ? paywayTranId.value : undefined,
           courierName: courierName.value,
-          discountCode: appliedPromo.value,
           notes: form.value.notes
         };
 
@@ -687,7 +681,8 @@ export default {
       cartItems,
       totalCount,
       subtotal,
-      discountAmount,
+      deliveryFee,
+      DELIVERY_FEE,
       totalAmount,
       storeCredit,
       creditApplied,

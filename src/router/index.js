@@ -81,16 +81,25 @@ const router = createRouter({
 });
 
 // Navigation Guard
-router.beforeEach((to, from, next) => {
-  const currentRole = store.getters['auth/userRole'].toLowerCase();
-
-  if (to.meta.requiresAuth && !store.getters['auth/isAuthenticated']) {
-    return next({ name: 'Login', query: { redirect: to.fullPath } });
+router.beforeEach(async (to, from, next) => {
+  // Protected pages wait for the server to confirm who the saved login
+  // belongs to, so a role edited in the browser can't open /admin.
+  if (to.matched.some((r) => r.meta.requiresAuth)) {
+    await store.dispatch('auth/initAuth');
   }
 
-  // Route requires Staff or Admin role (the whole /admin backoffice)
+  const currentRole = store.getters['auth/userRole'].toLowerCase();
+
+  // Admin pages: not signed in -> plain /login (no ?redirect=/admin/...).
+  // Signed in as a customer -> back to the shop; they're already logged in,
+  // so showing them the login form again only confuses them.
   if (to.meta.requiresStaff && !['staff', 'admin'].includes(currentRole)) {
-    return next({ name: 'Home' });
+    return next(store.getters['auth/isAuthenticated'] ? { name: 'Home' } : { name: 'Login' });
+  }
+
+  // Customer pages (checkout, orders...) still come back to where they were
+  if (to.meta.requiresAuth && !store.getters['auth/isAuthenticated']) {
+    return next({ name: 'Login', query: { redirect: to.fullPath } });
   }
 
   if (to.meta.requiresAdmin && currentRole !== 'admin') {

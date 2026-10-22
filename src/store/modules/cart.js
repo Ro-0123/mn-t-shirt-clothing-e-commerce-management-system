@@ -36,23 +36,16 @@ export default {
   namespaced: true,
   state: () => ({
     items: [],
-    isDrawerOpen: false,
-    promoCode: '',
-    discountRate: 0 // 0.2 for 20%
+    isDrawerOpen: false
   }),
 
   getters: {
     cartItems: (state) => state.items,
     totalItemsCount: (state) => state.items.reduce((sum, item) => sum + item.quantity, 0),
     subtotal: (state) => state.items.reduce((sum, item) => sum + item.price * item.quantity, 0),
-    discountAmount: (state, getters) => Math.round(getters.subtotal * state.discountRate * 100) / 100,
     shippingFee: (state, getters) => 0,
-    totalAmount: (state, getters) => {
-      const discounted = getters.subtotal - getters.discountAmount;
-      return Math.max(0, Math.round((discounted + getters.shippingFee) * 100) / 100);
-    },
-    isDrawerOpen: (state) => state.isDrawerOpen,
-    appliedPromo: (state) => state.promoCode
+    totalAmount: (state, getters) => Math.max(0, Math.round((getters.subtotal + getters.shippingFee) * 100) / 100),
+    isDrawerOpen: (state) => state.isDrawerOpen
   },
 
   mutations: {
@@ -61,14 +54,6 @@ export default {
     },
     SET_DRAWER(state, isOpen) {
       state.isDrawerOpen = isOpen;
-    },
-    SET_PROMO(state, { code, rate }) {
-      state.promoCode = code;
-      state.discountRate = rate;
-    },
-    CLEAR_PROMO(state) {
-      state.promoCode = '';
-      state.discountRate = 0;
     }
   },
 
@@ -138,24 +123,8 @@ export default {
       try {
         await clearCartApi();
         commit('SET_CART', []);
-        commit('CLEAR_PROMO');
       } catch (err) {
         console.error(err);
-      }
-    },
-
-    applyPromoCode({ commit }, code) {
-      const trimmed = (code || '').trim().toUpperCase();
-      if (trimmed === 'MN20' || trimmed === 'DISCOUNT20' || trimmed === 'WELCOME20') {
-        commit('SET_PROMO', { code: trimmed, rate: 0.20 });
-        SuccessToast('20% Promo Discount Applied!');
-        return { success: true, message: 'Promo applied!' };
-      } else if (trimmed === 'FREESHIP') {
-        commit('SET_PROMO', { code: trimmed, rate: 0.10 });
-        SuccessToast('Free Ship & 10% Discount Applied!');
-        return { success: true, message: 'Promo applied!' };
-      } else {
-        return { success: false, message: 'Invalid promo code. Try "MN20" for 20% off!' };
       }
     },
 

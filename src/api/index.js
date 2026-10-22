@@ -66,6 +66,9 @@ export const deleteUserApi = (id) => apiClient.delete(`/admin/users/${id}`);
 
 // Reports & Store Info
 export const fetchAnalyticsReportApi = () => apiClient.get('/admin/analytics');
+export const generateReportApi = (reportType) => apiClient.post('/admin/reports', { reportType });
+export const fetchReportsApi = () => apiClient.get('/admin/reports');
+export const fetchReportByIdApi = (id) => apiClient.get(`/admin/reports/${id}`);
 export const fetchStoreInfoApi = () => apiClient.get('/store-info');
 export const updateStoreInfoApi = (data) => apiClient.put('/store-info', data);
 export const syncDummyJsonApi = () => apiClient.post('/sync-dummyjson');

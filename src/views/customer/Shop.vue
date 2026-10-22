@@ -59,22 +59,6 @@
           </div>
         </div>
 
-        <!-- Size Filter -->
-        <div class="p-5 border border-[var(--border)] space-y-3 rounded-sm">
-          <h3 class="font-bold text-xs uppercase tracking-wider text-[var(--text)]">Select size</h3>
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-for="s in ['XS', 'S', 'M', 'L', 'XL', '2XL']"
-              :key="s"
-              @click="toggleSize(s)"
-              :class="selectedSize === s ? 'bg-[var(--text)] text-white font-bold' : 'bg-white text-[var(--text-muted)] border border-[var(--border)] hover:border-[var(--border-strong)]'"
-              class="w-10 h-10 rounded-sm text-xs flex items-center justify-center transition-colors cursor-pointer"
-            >
-              {{ s }}
-            </button>
-          </div>
-        </div>
-
         <!-- Reset All Button -->
         <button
           @click="resetAllFilters"
@@ -211,7 +195,6 @@ export default {
 
     const search = ref('');
     const selectedCategory = ref('');
-    const selectedSize = ref('');
     const sortBy = ref('newest');
 
     const products = computed(() => store.getters['products/allProducts']);
@@ -260,7 +243,6 @@ export default {
       store.dispatch('products/fetchProducts', {
         search: search.value,
         category: selectedCategory.value,
-        size: selectedSize.value,
         sort: sortBy.value
       });
     };
@@ -278,15 +260,9 @@ export default {
       nextTick(() => productsSection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
     };
 
-    const toggleSize = (size) => {
-      selectedSize.value = selectedSize.value === size ? '' : size;
-      applyFilters();
-    };
-
     const resetAllFilters = () => {
       search.value = '';
       selectedCategory.value = '';
-      selectedSize.value = '';
       sortBy.value = 'newest';
       router.push('/shop');
       store.dispatch('products/fetchProducts');
@@ -317,7 +293,6 @@ export default {
     return {
       search,
       selectedCategory,
-      selectedSize,
       sortBy,
       products,
       categories,
@@ -332,7 +307,6 @@ export default {
       selectCategory,
       productsSection,
       viewAllCategory,
-      toggleSize,
       resetAllFilters
     };
   }

@@ -28,7 +28,8 @@ const Payment = sequelize.define('Payment', {
     allowNull: false,
   },
   paymentMethod: {
-    type: DataTypes.ENUM('credit_card', 'debit_card', 'paypal', 'bank_transfer', 'cash_on_delivery'),
+    // Same methods as orders.paymentMethod
+    type: DataTypes.ENUM('paypal', 'bank_transfer', 'cash_on_delivery', 'payway_card', 'payway_qr', 'store_credit'),
     allowNull: false,
   },
   transactionId: {

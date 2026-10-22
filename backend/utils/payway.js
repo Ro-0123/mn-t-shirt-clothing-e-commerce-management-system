@@ -116,8 +116,12 @@ export const checkPaywayTransaction = async (tranId) => {
     body: new URLSearchParams({ req_time, merchant_id: MERCHANT_ID, tran_id: tranId, hash }),
   });
   const data = await response.json();
+  // Sandbox-confirmed: an unpaid transaction returns payment_status "PENDING"
+  // (and "tran_id not found" for the first few seconds after creation). Only
+  // an explicit APPROVED counts as paid -- anything else is treated as unpaid.
   const paymentStatus = data?.data?.payment_status;
-  const paid = Boolean(paymentStatus) && !['PENDING', 'DECLINED', 'FAILED', 'CANCELLED', 'EXPIRED'].includes(paymentStatus);
+  const paid = paymentStatus === 'APPROVED';
+  const amount = Number(data?.data?.payment_amount || data?.data?.total_amount || 0);
 
-  return { paid, status: paymentStatus || null, raw: data };
+  return { paid, status: paymentStatus || null, amount, raw: data };
 };

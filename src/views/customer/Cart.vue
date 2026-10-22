@@ -130,38 +130,11 @@
             Order Summary
           </h2>
 
-          <!-- Promo Code Input -->
-          <div class="space-y-2">
-            <label class="text-xs font-bold text-[var(--text)]">Promo Code</label>
-            <div class="flex gap-2">
-              <input
-                type="text"
-                v-model="promoInput"
-                placeholder="Try 'MN20'"
-                class="flex-1 px-3 py-2 text-xs bg-[var(--bg-alt)] border border-[var(--border)] rounded-sm uppercase font-mono font-bold text-[var(--text)] placeholder-[var(--text-faint)] focus:outline-none focus:border-[var(--accent)]"
-              />
-              <button
-                @click="applyPromo"
-                class="px-4 py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-xs font-bold rounded-sm transition-colors cursor-pointer"
-              >
-                Apply
-              </button>
-            </div>
-            <p v-if="appliedPromo" class="text-[11px] font-bold text-[var(--text)] flex items-center gap-1">
-              <i class="fa-solid fa-circle-check"></i> Code '{{ appliedPromo }}' applied (20% off)
-            </p>
-          </div>
-
           <!-- Breakdown Calculations -->
-          <div class="space-y-2.5 text-xs border-t border-[var(--border)] pt-4">
+          <div class="space-y-2.5 text-xs">
             <div class="flex justify-between text-[var(--text-muted)]">
               <span>Subtotal</span>
               <span class="font-bold text-[var(--text)]">${{ subtotal.toFixed(2) }}</span>
-            </div>
-
-            <div v-if="discountAmount > 0" class="flex justify-between text-[var(--accent)] font-bold">
-              <span>Discount</span>
-              <span>-${{ discountAmount.toFixed(2) }}</span>
             </div>
 
             <div class="divider flex justify-between text-base font-black text-[var(--text)] pt-3">
@@ -191,22 +164,18 @@
 
 
 <script>
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
 import { useStore } from 'vuex';
-import { ErrorToast } from '@/functions/sweetalert';
 
 export default {
   name: 'Cart',
   setup() {
     const store = useStore();
-    const promoInput = ref('');
 
     const cartItems = computed(() => store.getters['cart/cartItems']);
     const totalCount = computed(() => store.getters['cart/totalItemsCount']);
     const subtotal = computed(() => store.getters['cart/subtotal']);
-    const discountAmount = computed(() => store.getters['cart/discountAmount']);
     const totalAmount = computed(() => store.getters['cart/totalAmount']);
-    const appliedPromo = computed(() => store.getters['cart/appliedPromo']);
 
     const updateQuantity = (item, qty) => {
       store.dispatch('cart/updateQuantity', {
@@ -229,25 +198,14 @@ export default {
       store.dispatch('cart/clearCart');
     };
 
-    const applyPromo = () => {
-      const res = store.dispatch('cart/applyPromoCode', promoInput.value);
-      if (!res.success) {
-        ErrorToast('Invalid Code', res.message);
-      }
-    };
-
     return {
-      promoInput,
       cartItems,
       totalCount,
       subtotal,
-      discountAmount,
       totalAmount,
-      appliedPromo,
       updateQuantity,
       removeItem,
-      clearAll,
-      applyPromo
+      clearAll
     };
   }
 };

@@ -1,9 +1,9 @@
 <template>
-  <div v-if="isOpen" class="storefront fixed inset-0 z-50 overflow-hidden">
-    <!-- Backdrop -->
+  <div v-if="isOpen" class="storefront fixed inset-0 z-50 overflow-hidden" style="background: transparent">
+    <!-- Backdrop (transparent root so the page stays visible behind the drawer) -->
     <div
       @click="closeDrawer"
-      class="absolute inset-0 bg-black/40 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+      class="absolute inset-0 bg-black/30 transition-opacity animate-in fade-in duration-200"
     ></div>
 
     <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
@@ -122,10 +122,6 @@
               <span>Subtotal</span>
               <span class="font-semibold text-[var(--text)]">${{ subtotal.toFixed(2) }}</span>
             </div>
-            <div v-if="discountAmount > 0" class="flex justify-between text-[var(--accent)] font-medium">
-              <span>Promo Discount (20%)</span>
-              <span>-${{ discountAmount.toFixed(2) }}</span>
-            </div>
             <div class="divider flex justify-between text-sm font-extrabold text-[var(--text)] pt-2">
               <span>Estimated Total</span>
               <span>${{ totalAmount.toFixed(2) }}</span>
@@ -169,7 +165,6 @@ export default {
     const items = computed(() => store.getters['cart/cartItems']);
     const totalCount = computed(() => store.getters['cart/totalItemsCount']);
     const subtotal = computed(() => store.getters['cart/subtotal']);
-    const discountAmount = computed(() => store.getters['cart/discountAmount']);
     const totalAmount = computed(() => store.getters['cart/totalAmount']);
 
     const closeDrawer = () => {
@@ -198,7 +193,6 @@ export default {
       items,
       totalCount,
       subtotal,
-      discountAmount,
       totalAmount,
       closeDrawer,
       updateQty,

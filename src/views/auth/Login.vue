@@ -96,6 +96,13 @@ export default {
 
     const isLoading = computed(() => store.getters['auth/isLoading']);
 
+    // Only same-site paths, so ?redirect= can't send people to another website
+    const redirectPath = computed(() => {
+      const redirect = router.currentRoute.value.query.redirect;
+      return typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : '';
+    });
+    const isAdminRedirect = computed(() => redirectPath.value.startsWith('/admin'));
+
     const handleLogin = async () => {
       if (!captchaToken.value) {
         ErrorToast('Please complete the captcha');
@@ -110,12 +117,12 @@ export default {
         });
 
         if (user.role === 'admin' || user.role === 'staff') {
-          router.push('/admin/dashboard');
+          // Back to the admin page they opened (e.g. /admin/stocks), else the dashboard
+          router.push(isAdminRedirect.value ? redirectPath.value : '/admin/dashboard');
         } else {
-          // Return customers to the page that sent them here (only same-site paths)
-          const redirect = router.currentRoute.value.query.redirect;
-          const isSafe = typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//');
-          router.push(isSafe ? redirect : '/');
+          // Customers are signed in normally. If they came from an /admin link
+          // they go to the shop instead -- the admin pages stay closed to them.
+          router.push(isAdminRedirect.value ? '/' : (redirectPath.value || '/'));
         }
       } catch (error) {
         // Error is already handled by the store and toast is shown
@@ -132,6 +139,7 @@ export default {
       captchaToken,
       recaptchaRef,
       isLoading,
+      isAdminRedirect,
       handleLogin
     };
   }

@@ -3,17 +3,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
         <h1 class="text-2xl font-display text-[var(--text)]">Manage Inventory & Stocks</h1>
-        <p class="text-xs text-[var(--text-muted)] mt-0.5">Track warehouse bin levels, restock batches, and prevent out-of-stock events</p>
-      </div>
-
-      <div class="flex items-center gap-3">
-        <button
-          @click="openBulkRestockModal"
-          class="px-4 py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-sm font-bold text-xs flex items-center gap-2 transition-colors cursor-pointer"
-        >
-          <i class="fa-solid fa-boxes-packing"></i>
-          <span>Batch Restock (+20 to all)</span>
-        </button>
+        <p class="text-xs text-[var(--text-muted)] mt-0.5">Type how many new units arrived and click Add. Stock goes down automatically when customers buy.</p>
       </div>
     </div>
 
@@ -22,7 +12,7 @@
       <div class="bg-[var(--surface)] rounded-sm border border-[var(--border)] p-5 space-y-1">
         <span class="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Total Warehouse Units</span>
         <p class="text-2xl font-display text-[var(--text)]">{{ totalUnits }} units</p>
-        <span class="text-[11px] text-[var(--text-muted)]">Distributed across 8 SKUs</span>
+        <span class="text-[11px] text-[var(--text-muted)]">Across {{ products.length }} products</span>
       </div>
 
       <div class="bg-[var(--surface)] rounded-sm border border-[var(--border)] p-5 space-y-1">
@@ -61,7 +51,7 @@
               <th class="py-3 px-4 font-bold">Safe Min</th>
               <th class="py-3 px-4 font-bold">Current Stock</th>
               <th class="py-3 px-4 font-bold">Status</th>
-              <th class="py-3 px-4 font-bold text-right">Adjust Stock</th>
+              <th class="py-3 px-4 font-bold text-right">Add Stock</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-[var(--border)]">
@@ -102,32 +92,27 @@
                 </span>
               </td>
 
-              <!-- Stock buttons -->
+              <!-- Add stock: admin types how many new units arrived.
+                   Sales take stock out automatically when an order is placed. -->
               <td class="py-3 px-4 text-right">
-                <div class="flex items-center justify-end gap-1.5">
+                <form @submit.prevent="addStock(product)" class="flex items-center justify-end gap-1.5">
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    v-model.number="addAmounts[product.id]"
+                    placeholder="Qty"
+                    :aria-label="`Units to add for ${product.name}`"
+                    class="w-20 px-2 py-1 bg-[var(--surface)] border border-[var(--border)] rounded-sm text-xs text-[var(--text)] placeholder-[var(--text-faint)] focus:outline-none focus:border-[var(--accent)]"
+                  />
                   <button
-                    @click="adjustStock(product.id, 5, 'add')"
-                    class="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-sm font-bold text-xs transition-colors cursor-pointer"
-                    title="Add 5 units"
+                    type="submit"
+                    :disabled="!(addAmounts[product.id] > 0) || savingId === product.id"
+                    class="px-3 py-1 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed text-emerald-700 border border-emerald-200 rounded-sm font-bold text-xs transition-colors cursor-pointer"
                   >
-                    +5
+                    {{ savingId === product.id ? 'Saving…' : 'Add' }}
                   </button>
-                  <button
-                    @click="adjustStock(product.id, 20, 'add')"
-                    class="px-2.5 py-1 bg-[var(--accent-soft)] hover:bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent)]/20 rounded-sm font-bold text-xs transition-colors cursor-pointer"
-                    title="Add 20 units"
-                  >
-                    +20
-                  </button>
-                  <button
-                    @click="adjustStock(product.id, 1, 'subtract')"
-                    :disabled="product.stock <= 0"
-                    class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 disabled:opacity-30 text-rose-700 border border-rose-200 rounded-sm font-bold text-xs transition-colors cursor-pointer"
-                    title="Subtract 1 unit"
-                  >
-                    -1
-                  </button>
-                </div>
+                </form>
               </td>
             </tr>
           </tbody>
@@ -172,22 +157,22 @@ export default {
       store.dispatch('products/fetchProducts');
     });
 
-    const adjustStock = async (productId, quantity, operation) => {
-      await store.dispatch('admin/updateStock', { productId, quantity, operation });
-      store.dispatch('products/fetchProducts');
-      SuccessToast('Stock Updated', `Inventory adjusted (${operation === 'add' ? '+' : '-'}${quantity})`);
-    };
+    const addAmounts = ref({});
+    const savingId = ref(null);
 
-    const openBulkRestockModal = async () => {
-      for (const p of products.value) {
-        await store.dispatch('admin/updateStock', {
-          productId: p.id,
-          quantity: 20,
-          operation: 'add'
-        });
+    const addStock = async (product) => {
+      const qty = Math.floor(Number(addAmounts.value[product.id]));
+      if (!(qty > 0)) return;
+      savingId.value = product.id;
+      try {
+        await store.dispatch('admin/updateStock', { productId: product.id, quantity: qty, operation: 'add' });
+        addAmounts.value[product.id] = null;
+        SuccessToast('Stock Added', `+${qty} units added to ${product.name}`);
+      } catch {
+        // restockProduct already shows the error
+      } finally {
+        savingId.value = null;
       }
-      store.dispatch('products/fetchProducts');
-      SuccessToast('Batch Restock Complete', '+20 units added to all clothing items.');
     };
 
     return {
@@ -197,8 +182,9 @@ export default {
       totalUnits,
       inventoryValue,
       filteredProducts,
-      adjustStock,
-      openBulkRestockModal
+      addAmounts,
+      savingId,
+      addStock
     };
   }
 };

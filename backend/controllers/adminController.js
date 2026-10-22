@@ -65,6 +65,24 @@ export const getAnalytics = async (req, res, next) => {
 
     const topSelling = Object.values(productSalesMap).sort((a, b) => b.unitsSold - a.unitsSold);
 
+    // Paid orders drive average order value, delivery rate and the period comparison
+    const DAY = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const last30Start = new Date(now - 30 * DAY);
+    const prev30Start = new Date(now - 60 * DAY);
+    const [paidOrdersCount, paidDeliveredCount, allOrdersCount, cancelledCount, revenueLast30, revenuePrev30] = await Promise.all([
+      Order.count({ where: { paymentStatus: 'completed' } }),
+      Order.count({ where: { paymentStatus: 'completed', status: 'delivered' } }),
+      Order.count(),
+      Order.count({ where: { status: 'cancelled' } }),
+      Order.sum('finalAmount', { where: { paymentStatus: 'completed', createdAt: { [Op.gte]: last30Start } } }),
+      Order.sum('finalAmount', { where: { paymentStatus: 'completed', createdAt: { [Op.gte]: prev30Start, [Op.lt]: last30Start } } }),
+    ]);
+    const round2 = (n) => Math.round((n || 0) * 100) / 100;
+    const revenueChangePct = revenuePrev30 > 0
+      ? round2(((revenueLast30 || 0) - revenuePrev30) / revenuePrev30 * 100)
+      : null; // nothing to compare against
+
     const recentOrders = await Order.findAll({
       include: [
         { model: User, attributes: ['id', 'firstName', 'lastName', 'email', 'phone'] },
@@ -82,8 +100,16 @@ export const getAnalytics = async (req, res, next) => {
       activeProductsCount,
       lowStockCount,
       customerCount,
-      categoryRevenue,
-      topSelling,
+      categoryRevenue: Object.fromEntries(Object.entries(categoryRevenue).map(([name, revenue]) => [name, round2(revenue)])),
+      topSelling: topSelling.map((p) => ({ ...p, revenue: round2(p.revenue) })),
+      paidOrdersCount,
+      paidDeliveredCount,
+      allOrdersCount,
+      cancelledCount,
+      avgOrderValue: paidOrdersCount ? round2((totalRevenue || 0) / paidOrdersCount) : 0,
+      revenueLast30: round2(revenueLast30),
+      revenuePrev30: round2(revenuePrev30),
+      revenueChangePct,
       recentOrders: recentOrders.map(serializeOrder),
     });
   } catch (error) {
@@ -305,7 +331,9 @@ export const requestReport = async (req, res, next) => {
 
 export const getReports = async (req, res, next) => {
   try {
+    // The list leaves out each report's (possibly large) data; fetch one by id for that
     const reports = await Report.findAll({
+      attributes: { exclude: ['data'] },
       include: [{ model: User, attributes: ['id', 'firstName', 'lastName', 'email'] }],
       order: [['createdAt', 'DESC']],
     });

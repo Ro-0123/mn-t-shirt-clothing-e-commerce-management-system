@@ -220,30 +220,6 @@
       </div>
     </section>
 
-    <!-- Flash Promo Banner -->
-    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-16">
-      <div class="surface-alt p-8 sm:p-12 border border-[var(--border)] flex flex-col md:flex-row items-center justify-between gap-8">
-        <div class="space-y-3 text-center md:text-left">
-          <span class="px-3 py-1 border border-[var(--accent)]/40 text-[var(--accent)] text-xs font-bold uppercase tracking-wider inline-block">
-            Special launch discount
-          </span>
-          <h2 class="font-display text-3xl sm:text-5xl text-[var(--text)]">
-            Get 20% off your first order
-          </h2>
-          <p class="text-sm text-[var(--text-muted)] max-w-md">
-            Use promo code <span class="font-mono font-bold bg-[var(--text)] text-white px-2 py-0.5 rounded-sm text-xs">MN20</span> at checkout to unlock instant discounts.
-          </p>
-        </div>
-
-        <router-link
-          to="/shop"
-          class="px-8 py-3.5 bg-[var(--text)] hover:bg-black text-white font-extrabold text-sm transition-all flex-shrink-0 rounded-sm"
-        >
-          Claim discount now
-        </router-link>
-      </div>
-    </section>
-
     <!-- Why MN T-Shirt Section -->
     <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-16">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-5">

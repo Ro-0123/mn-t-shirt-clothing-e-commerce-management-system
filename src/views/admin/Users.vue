@@ -15,6 +15,30 @@
       </button>
     </div>
 
+    <!-- Search -->
+    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+      <div class="relative w-full sm:max-w-sm">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-faint)] text-xs"></i>
+        <input
+          v-model="search"
+          type="text"
+          placeholder="Search by name, email or phone..."
+          class="w-full pl-9 pr-9 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-sm text-xs font-medium text-[var(--text)] placeholder-[var(--text-faint)] focus:outline-none focus:border-[var(--accent)]"
+        />
+        <button
+          v-if="search"
+          @click="search = ''"
+          class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-[var(--text-faint)] hover:text-[var(--text)] cursor-pointer"
+          title="Clear search"
+        >
+          <i class="fa-solid fa-xmark text-xs"></i>
+        </button>
+      </div>
+      <span class="text-xs text-[var(--text-muted)]">
+        Showing <strong class="text-[var(--text)]">{{ users.length }}</strong> of {{ totalUsers }} users
+      </span>
+    </div>
+
     <!-- Users Table -->
     <div class="bg-[var(--surface)] rounded-sm border border-[var(--border)] overflow-hidden">
       <div class="overflow-auto max-h-[65vh]">
@@ -78,6 +102,11 @@
                     <i class="fa-regular fa-trash-can"></i>
                   </button>
                 </div>
+              </td>
+            </tr>
+            <tr v-if="users.length === 0 && search">
+              <td colspan="7" class="py-10 text-center text-[var(--text-muted)]">
+                No users match "<span class="font-bold text-[var(--text)]">{{ search }}</span>"
               </td>
             </tr>
           </tbody>
@@ -158,7 +187,16 @@ export default {
       phone: '+855 92 888 777'
     });
 
-    const users = computed(() => store.getters['admin/allUsers']);
+    // Admins first, then staff, then customers (original order kept within each role)
+    const ROLE_ORDER = { admin: 0, staff: 1, customer: 2 };
+    const search = ref('');
+    const totalUsers = computed(() => store.getters['admin/allUsers'].length);
+    const users = computed(() => {
+      const q = search.value.trim().toLowerCase();
+      return store.getters['admin/allUsers']
+        .filter(u => !q || [u.name, u.email, u.phone].some(v => String(v || '').toLowerCase().includes(q)))
+        .sort((a, b) => (ROLE_ORDER[a.role] ?? 3) - (ROLE_ORDER[b.role] ?? 3));
+    });
 
     onMounted(() => {
       store.dispatch('admin/fetchUsers');
@@ -203,6 +241,8 @@ export default {
     return {
       showModal,
       form,
+      search,
+      totalUsers,
       users,
       openModal,
       createUser,

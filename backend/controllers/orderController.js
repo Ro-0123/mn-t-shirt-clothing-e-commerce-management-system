@@ -1,5 +1,5 @@
 import { Op } from 'sequelize';
-import { Order, OrderItem, Product, Stock, Cart, Delivery, User } from '../models/index.js';
+import { Order, OrderItem, Product, Stock, Cart, Delivery, User, Payment } from '../models/index.js';
 import sequelize from '../config/database.js';
 import { parseJsonArray } from './productController.js';
 import { checkKhqrPayment } from '../utils/khqr.js';
@@ -8,7 +8,11 @@ import { checkPaywayTransaction, isPaywayConfigured } from '../utils/payway.js';
 // Payment methods that are already paid by the time the order is created --
 // gateway payments are verified near the top of createOrder, and store credit
 // is deducted in the same transaction that creates the order.
-const VERIFIED_PAYMENT_METHODS = ['bank_transfer', 'payway_card', 'payway_qr', 'store_credit'];
+// Flat delivery fee charged per order, whichever courier is chosen at checkout.
+// Keep in sync with DELIVERY_FEE in src/views/customer/Checkout.vue.
+const DELIVERY_FEE = 0; // TEMP for testing -- normally 2
+
+const VERIFIED_PAYMENT_METHODS =['bank_transfer', 'payway_card', 'payway_qr', 'store_credit'];
 
 // Methods a customer can choose at checkout. Cash on delivery is no longer
 // offered; it stays in PAYMENT_METHOD_TO_FRONTEND so old orders still display.
@@ -23,8 +27,6 @@ const PAYMENT_METHOD_TO_FRONTEND = {
   bank_transfer: 'ABA_QR',
   payway_card: 'PAYWAY_CARD',
   payway_qr: 'PAYWAY_QR',
-  credit_card: 'PAYWAY_CARD',
-  debit_card: 'PAYWAY_CARD',
   cash_on_delivery: 'CASH_ON_DELIVERY',
   paypal: 'PAYPAL',
   store_credit: 'STORE_CREDIT',
@@ -83,9 +85,7 @@ export const serializeOrder = (order) => {
       image: parseJsonArray(item.Product?.images)[0] || item.Product?.image || '',
     })),
     subtotal: Number(o.totalAmount),
-    discount: Number(o.discountAmount || 0),
     shippingFee: Number(o.shippingCost || 0),
-    tax: Number(o.tax || 0),
     total: Number(o.finalAmount),
     storeCreditUsed: Number(o.storeCreditUsed || 0),
     amountPaid: Math.round((Number(o.finalAmount) - Number(o.storeCreditUsed || 0)) * 100) / 100,
@@ -111,7 +111,7 @@ const findOrderByIdentifier = (identifier, extraInclude = orderInclude) => {
 
 export const createOrder = async (req, res, next) => {
   try {
-    const { items, shippingAddress, paymentMethod, notes, discountCode, courierName, khqrMd5, paywayTranId } = req.body;
+    const { items, shippingAddress, paymentMethod, notes, courierName, khqrMd5, paywayTranId } = req.body;
 
     if (!items || items.length === 0) {
       return res.status(400).json({ message: 'Order must contain items' });
@@ -124,6 +124,13 @@ export const createOrder = async (req, res, next) => {
     let subtotal = 0;
     const orderItems = [];
 
+    // The same product can be in the cart more than once (different size or
+    // colour), and they all come out of one stock count -- check the total.
+    const qtyByProduct = {};
+    for (const item of items) {
+      qtyByProduct[item.productId] = (qtyByProduct[item.productId] || 0) + Number(item.quantity);
+    }
+
     for (const item of items) {
       const product = await Product.findByPk(item.productId, { include: [Stock] });
       if (!product) {
@@ -131,8 +138,8 @@ export const createOrder = async (req, res, next) => {
       }
 
       const availableQty = product.Stock?.quantity ?? 0;
-      if (availableQty < item.quantity) {
-        return res.status(400).json({ message: `Insufficient stock for ${product.name}` });
+      if (availableQty < qtyByProduct[item.productId]) {
+        return res.status(400).json({ message: `Only ${availableQty} left in stock for ${product.name}` });
       }
 
       const itemTotal = product.price * item.quantity;
@@ -148,10 +155,8 @@ export const createOrder = async (req, res, next) => {
       });
     }
 
-    const discount = discountCode === 'MN20' ? Math.round(subtotal * 0.2 * 100) / 100 : 0;
-    const shippingFee = 0;
-    const tax = 0;
-    const finalAmount = Math.round((subtotal - discount + shippingFee + tax) * 100) / 100;
+    const shippingFee = DELIVERY_FEE;
+    const finalAmount = Math.round((subtotal + shippingFee) * 100) / 100;
 
     // Store credit is applied automatically: it covers as much of the order as
     // it can, and only the remainder (amountDue) goes through a payment gateway.
@@ -195,6 +200,9 @@ export const createOrder = async (req, res, next) => {
       if (!paymentResult.paid) {
         return res.status(400).json({ message: 'Payment has not been completed yet. Please complete payment before placing your order.' });
       }
+      if (paymentResult.amount + 0.005 < amountDue) {
+        return res.status(400).json({ message: `The amount paid ($${paymentResult.amount.toFixed(2)}) is less than the $${amountDue.toFixed(2)} due. Please contact support.` });
+      }
     }
 
     // PayPal has no real payment gateway wired up yet, so there is no way to
@@ -234,9 +242,7 @@ export const createOrder = async (req, res, next) => {
           orderNumber,
           userId: req.userId,
           totalAmount: subtotal,
-          tax,
           shippingCost: shippingFee,
-          discountAmount: discount,
           finalAmount,
           storeCreditUsed,
           paymentMethod: backendPaymentMethod,
@@ -251,12 +257,40 @@ export const createOrder = async (req, res, next) => {
           paywayTranId: (backendPaymentMethod === 'payway_card' || backendPaymentMethod === 'payway_qr') ? paywayTranId : undefined,
         }, { transaction: t });
 
+        // Record the money received in the payments table: one row for the
+        // store credit part and one for the gateway part (either can be 0).
+        if (VERIFIED_PAYMENT_METHODS.includes(backendPaymentMethod)) {
+          const paidAt = new Date();
+          if (storeCreditUsed > 0) {
+            await Payment.create({
+              orderId: created.id,
+              userId: req.userId,
+              amount: storeCreditUsed,
+              paymentMethod: 'store_credit',
+              status: 'completed',
+              paidAt,
+            }, { transaction: t });
+          }
+          if (amountDue > 0) {
+            await Payment.create({
+              orderId: created.id,
+              userId: req.userId,
+              amount: amountDue,
+              paymentMethod: backendPaymentMethod,
+              transactionId: backendPaymentMethod === 'bank_transfer' ? khqrMd5 : paywayTranId,
+              status: 'completed',
+              paidAt,
+            }, { transaction: t });
+          }
+        }
+
         for (const item of orderItems) {
           await OrderItem.create({ ...item, orderId: created.id }, { transaction: t });
 
-          const stock = await Stock.findOne({ where: { productId: item.productId }, transaction: t });
+          // Row lock so two checkouts at the same moment can't both take the last items
+          const stock = await Stock.findOne({ where: { productId: item.productId }, transaction: t, lock: t.LOCK.UPDATE });
           if (stock) {
-            await stock.update({ quantity: stock.quantity - item.quantity }, { transaction: t });
+            await stock.update({ quantity: Math.max(0, stock.quantity - item.quantity) }, { transaction: t });
           }
         }
 
@@ -411,6 +445,10 @@ export const cancelOrder = async (req, res, next) => {
       const newStoreCredit = Number(user.storeCredit || 0) + Number(order.finalAmount);
       await user.update({ storeCredit: newStoreCredit }, { transaction: t });
       await order.update({ paymentStatus: 'refunded' }, { transaction: t });
+      await Payment.update(
+        { status: 'refunded' },
+        { where: { orderId: order.id, status: 'completed' }, transaction: t }
+      );
 
       return newStoreCredit;
     });

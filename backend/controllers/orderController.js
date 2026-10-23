@@ -299,6 +299,9 @@ export const createOrder = async (req, res, next) => {
           trackingNumber: created.trackingNumber,
           courierName: courierName || 'MN Express Dispatch',
           shippingAddress,
+          // The customer's "Delivery Instructions / Gate Notes" from checkout,
+          // so whoever handles the delivery sees them too
+          notes: notes?.trim() || null,
           status: 'pending',
         }, { transaction: t });
 

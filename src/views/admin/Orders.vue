@@ -66,7 +66,15 @@
               </td>
 
               <td class="py-3.5 px-4">
-                <span class="font-semibold text-[var(--text)]">{{ order.items.length }} items</span>
+                <!-- What exactly to pack: product, size, colour, quantity -->
+                <ul class="space-y-0.5 min-w-[160px]">
+                  <li v-for="(item, i) in order.items" :key="i" class="text-[11px] leading-snug">
+                    <span class="font-semibold text-[var(--text)]">{{ item.quantity }}× {{ item.name }}</span>
+                    <span class="text-[var(--text-muted)]">
+                      &middot; {{ [item.size, item.color].filter(Boolean).join(' / ') || '—' }}
+                    </span>
+                  </li>
+                </ul>
               </td>
 
               <td class="py-3.5 px-4 font-black text-[var(--text)]">

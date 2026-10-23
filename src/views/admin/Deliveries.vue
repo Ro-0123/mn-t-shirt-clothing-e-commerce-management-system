@@ -77,6 +77,7 @@
               <th class="py-3 px-4 font-bold">Tracking #</th>
               <th class="py-3 px-4 font-bold">ETA</th>
               <th class="py-3 px-4 font-bold">Status</th>
+              <th class="py-3 px-4 font-bold">Notes</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-[var(--border)]">
@@ -126,6 +127,19 @@
                   <option value="Returned">Returned</option>
                   <option value="Failed">Failed</option>
                 </select>
+              </td>
+
+              <!-- Notes: starts with the customer's gate notes from checkout;
+                   staff can edit/add to it. Saves when you click away. -->
+              <td class="py-3.5 px-4 min-w-[200px]">
+                <textarea
+                  :value="d.driverNotes"
+                  @blur="updateNotes(d, $event.target.value)"
+                  rows="2"
+                  placeholder="Add a note…"
+                  :aria-label="`Notes for ${d.orderId}`"
+                  class="w-full px-2 py-1 rounded-sm text-[11px] border border-[var(--border)] bg-[var(--bg-alt)] focus:bg-[var(--surface)] focus:outline-none focus:border-[var(--accent)] text-[var(--text)] placeholder-[var(--text-faint)] resize-y"
+                ></textarea>
               </td>
             </tr>
           </tbody>
@@ -183,6 +197,12 @@ export default {
       store.dispatch('admin/updateDeliveryStatus', { id, status });
     };
 
+    const updateNotes = (d, value) => {
+      const driverNotes = value.trim();
+      if (driverNotes === (d.driverNotes || '').trim()) return; // nothing changed
+      store.dispatch('admin/updateDeliveryStatus', { id: d.id, driverNotes });
+    };
+
     return {
       deliveries,
       selectedStatus,
@@ -190,7 +210,8 @@ export default {
       statusCounts,
       getDeliveryStatusClass,
       updateCourier,
-      updateStatus
+      updateStatus,
+      updateNotes
     };
   }
 };

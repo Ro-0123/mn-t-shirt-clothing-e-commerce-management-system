@@ -39,20 +39,59 @@
         <span>Sync DummyJSON API</span>
       </button>
 
-      <!-- Low stock alert notification -->
-      <router-link
-        to="/admin/stocks"
-        class="relative p-2 text-[var(--text-muted)] hover:text-amber-600 rounded-sm hover:bg-[var(--bg-alt)] transition-colors"
-        title="Stock Alerts"
-      >
-        <i class="fa-solid fa-bell"></i>
-        <span
-          v-if="lowStockCount > 0"
-          class="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 text-black rounded-full text-[9px] font-black flex items-center justify-center animate-bounce"
+      <!-- Low stock alerts: click to see which products are running out -->
+      <div ref="bellRef" class="relative">
+        <button
+          type="button"
+          @click="showAlerts = !showAlerts"
+          :aria-expanded="showAlerts"
+          class="relative p-2 text-[var(--text-muted)] hover:text-amber-600 rounded-sm hover:bg-[var(--bg-alt)] transition-colors cursor-pointer"
+          title="Stock Alerts"
         >
-          {{ lowStockCount }}
-        </span>
-      </router-link>
+          <i class="fa-solid fa-bell"></i>
+          <span
+            v-if="lowStockCount > 0"
+            class="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 text-black rounded-full text-[9px] font-black flex items-center justify-center animate-bounce"
+          >
+            {{ lowStockCount }}
+          </span>
+        </button>
+
+        <div
+          v-if="showAlerts"
+          class="absolute right-0 mt-2 w-72 max-w-[calc(100vw-2rem)] bg-[var(--surface)] border border-[var(--border)] rounded-sm shadow-xl z-50 text-xs"
+        >
+          <div class="px-4 py-3 border-b border-[var(--border)] font-bold text-[var(--text)] flex items-center gap-2">
+            <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
+            <span>Low Stock Alerts ({{ lowStockCount }})</span>
+          </div>
+
+          <p v-if="lowStockProducts.length === 0" class="px-4 py-6 text-center text-[var(--text-muted)]">
+            All products are above their safe minimum.
+          </p>
+
+          <ul v-else class="max-h-72 overflow-y-auto divide-y divide-[var(--border)]">
+            <li v-for="p in lowStockProducts" :key="p.id" class="px-4 py-2.5 flex items-center gap-3">
+              <img v-if="p.images?.[0]" :src="p.images[0]" :alt="p.name" class="w-8 h-8 rounded-sm object-cover border border-[var(--border)] flex-shrink-0" />
+              <div class="flex-1 min-w-0">
+                <p class="font-bold text-[var(--text)] truncate">{{ p.name }}</p>
+                <p class="text-[11px]" :class="Number(p.stock) === 0 ? 'text-rose-700 font-bold' : 'text-amber-700'">
+                  {{ Number(p.stock) === 0 ? 'Out of stock' : `Only ${p.stock} left` }}
+                  <span class="text-[var(--text-faint)] font-normal">&middot; min {{ p.minStockLevel }}</span>
+                </p>
+              </div>
+            </li>
+          </ul>
+
+          <router-link
+            to="/admin/stocks"
+            @click="showAlerts = false"
+            class="block px-4 py-2.5 border-t border-[var(--border)] text-center font-bold text-[var(--accent)] hover:bg-[var(--bg-alt)]"
+          >
+            Go to Stocks to restock
+          </router-link>
+        </div>
+      </div>
 
       <!-- Toggle Control Sidebar (Settings panel) -->
       <button
@@ -81,7 +120,7 @@
 
 
 <script>
-import { computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useStore } from 'vuex';
 
 export default {
@@ -93,6 +132,20 @@ export default {
     const user = computed(() => store.getters['auth/currentUser']);
     const userRole = computed(() => store.getters['auth/userRole']);
     const lowStockCount = computed(() => store.getters['admin/lowStockCount']);
+    // Emptiest first, so out-of-stock items are at the top
+    const lowStockProducts = computed(() =>
+      [...store.getters['admin/lowStockProducts']].sort((a, b) => Number(a.stock) - Number(b.stock))
+    );
+
+    const showAlerts = ref(false);
+    const bellRef = ref(null);
+    const closeOnOutsideClick = (e) => {
+      if (showAlerts.value && bellRef.value && !bellRef.value.contains(e.target)) {
+        showAlerts.value = false;
+      }
+    };
+    onMounted(() => document.addEventListener('click', closeOnOutsideClick));
+    onUnmounted(() => document.removeEventListener('click', closeOnOutsideClick));
 
     const syncDummyJson = () => {
       store.dispatch('admin/syncDummyJson');
@@ -102,6 +155,9 @@ export default {
       user,
       userRole,
       lowStockCount,
+      lowStockProducts,
+      showAlerts,
+      bellRef,
       syncDummyJson
     };
   }

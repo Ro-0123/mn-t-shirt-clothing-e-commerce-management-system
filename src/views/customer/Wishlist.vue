@@ -79,11 +79,14 @@
 <script>
 import { computed } from 'vue';
 import { useStore } from 'vuex';
+import { useRouter } from 'vue-router';
+import { quickAddOrChoose } from '@/functions/quickAdd';
 
 export default {
   name: 'Wishlist',
   setup() {
     const store = useStore();
+    const router = useRouter();
 
     const items = computed(() => store.getters['wishlist/wishlistItems']);
 
@@ -92,14 +95,10 @@ export default {
     };
 
     const moveToCart = (product) => {
-      store.dispatch('cart/addToCart', {
-        product,
-        size: product.sizes?.[0] || 'M',
-        color: product.colors?.[0] || 'Black',
-        quantity: 1,
-        openDrawer: true
-      });
-      store.dispatch('wishlist/removeFromWishlist', product.id);
+      // Only leaves the wishlist once it's actually in the bag
+      if (quickAddOrChoose(store, router, product)) {
+        store.dispatch('wishlist/removeFromWishlist', product.id);
+      }
     };
 
     return {

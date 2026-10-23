@@ -11,6 +11,15 @@ const recalcTotals = (items) => ({
   totalPrice: Math.round(items.reduce((sum, i) => sum + Number(i.price || 0) * Number(i.quantity || 0), 0) * 100) / 100,
 });
 
+// Sequelize only saves a JSON column when it sees a change, and the items
+// array is edited in place -- so it looked unchanged and stayed [] in the
+// database while only the totals were saved. Mark it changed explicitly.
+const saveCart = (cart, items) => {
+  cart.set({ items: [...items], ...recalcTotals(items) });
+  cart.changed('items', true);
+  return cart.save();
+};
+
 export const getCart = async (req, res, next) => {
   try {
     const cart = await getOrCreateCart(req.userId);
@@ -31,8 +40,18 @@ export const addToCart = async (req, res, next) => {
     const cart = await getOrCreateCart(req.userId);
     const items = parseJsonArray(cart.items);
 
-    const resolvedSize = size || 'M';
-    const resolvedColor = color || 'Black';
+    // Must be one of the product's own sizes/colours -- no silent "M"/"Black"
+    // default, which is how every order ended up saved as Black.
+    const productSizes = parseJsonArray(product.sizes);
+    const productColors = parseJsonArray(product.colors);
+    if (productSizes.length && !productSizes.includes(size)) {
+      return res.status(400).json({ message: 'Please choose a size for this product.' });
+    }
+    if (productColors.length && !productColors.includes(color)) {
+      return res.status(400).json({ message: 'Please choose a color for this product.' });
+    }
+    const resolvedSize = size || '';
+    const resolvedColor = color || '';
     const existingIdx = items.findIndex(
       (i) => Number(i.productId) === Number(productId) && i.size === resolvedSize && i.color === resolvedColor,
     );
@@ -57,7 +76,7 @@ export const addToCart = async (req, res, next) => {
       });
     }
 
-    await cart.update({ items, ...recalcTotals(items) });
+    await saveCart(cart, items);
     res.status(200).json(items);
   } catch (error) {
     next(error);
@@ -82,7 +101,7 @@ export const updateCartItem = async (req, res, next) => {
       }
     }
 
-    await cart.update({ items, ...recalcTotals(items) });
+    await saveCart(cart, items);
     res.status(200).json(items);
   } catch (error) {
     next(error);
@@ -97,7 +116,7 @@ export const removeCartItem = async (req, res, next) => {
       (i) => !(Number(i.productId) === Number(productId) && i.size === size && i.color === color),
     );
 
-    await cart.update({ items, ...recalcTotals(items) });
+    await saveCart(cart, items);
     res.status(200).json(items);
   } catch (error) {
     next(error);

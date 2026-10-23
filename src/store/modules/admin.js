@@ -223,7 +223,11 @@ export default {
       try {
         const res = await updateDeliveryStatusApi(id, { status, courierName, driverNotes });
         commit('UPDATE_DELIVERY', res.data);
-        SuccessToast(status ? `Delivery ${id} status updated to ${status}` : `Delivery ${id} courier updated`);
+        SuccessToast(
+          status ? `Delivery ${id} status updated to ${status}`
+            : courierName ? `Delivery ${id} courier updated`
+              : `Delivery ${id} notes saved`
+        );
         dispatch('orders/fetchOrders', null, { root: true });
       } catch (err) {
         ErrorToast('Failed to update delivery');

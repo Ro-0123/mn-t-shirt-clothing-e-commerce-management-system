@@ -86,6 +86,8 @@
 <script>
 import { computed } from 'vue';
 import { useStore } from 'vuex';
+import { useRouter } from 'vue-router';
+import { quickAddOrChoose } from '@/functions/quickAdd';
 
 export default {
   name: 'ProductCard',
@@ -94,6 +96,7 @@ export default {
   },
   setup(props) {
     const store = useStore();
+    const router = useRouter();
 
     const isInWishlist = computed(() => store.getters['wishlist/isInWishlist'](props.product.id));
 
@@ -102,13 +105,7 @@ export default {
     };
 
     const quickAddToCart = () => {
-      store.dispatch('cart/addToCart', {
-        product: props.product,
-        size: props.product.sizes?.[0] || 'M',
-        color: props.product.colors?.[0] || 'Black',
-        quantity: 1,
-        openDrawer: true,
-      });
+      quickAddOrChoose(store, router, props.product);
     };
 
     return { isInWishlist, toggleWishlist, quickAddToCart };

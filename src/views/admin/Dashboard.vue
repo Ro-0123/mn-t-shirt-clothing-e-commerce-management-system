@@ -183,16 +183,6 @@
             All inventory levels are healthy!
           </div>
         </div>
-
-        <div class="pt-2">
-          <button
-            @click="quickRestockAll"
-            class="w-full py-2.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-sm font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <i class="fa-solid fa-dolly"></i>
-            <span>Quick Reorder Low Stock</span>
-          </button>
-        </div>
       </div>
 
     </div>
@@ -254,7 +244,6 @@
 <script>
 import { computed, onMounted } from 'vue';
 import { useStore } from 'vuex';
-import { SuccessToast } from '@/functions/sweetalert';
 
 export default {
   name: 'AdminDashboard',
@@ -282,18 +271,6 @@ export default {
       store.dispatch('admin/syncDummyJson');
     };
 
-    const quickRestockAll = async () => {
-      for (const p of lowStockProducts.value) {
-        await store.dispatch('admin/updateStock', {
-          productId: p.id,
-          quantity: 25,
-          operation: 'add'
-        });
-      }
-      SuccessToast('Restocked', 'Low stock items boosted by +25 units each.');
-      store.dispatch('products/fetchProducts');
-    };
-
     const getStatusBadgeClass = (status) => {
       switch (status) {
         case 'Delivered': return 'bg-emerald-50 border border-emerald-200 text-emerald-700';
@@ -314,7 +291,6 @@ export default {
       recentOrders,
       pendingOrdersCount,
       syncDummy,
-      quickRestockAll,
       getStatusBadgeClass
     };
   }

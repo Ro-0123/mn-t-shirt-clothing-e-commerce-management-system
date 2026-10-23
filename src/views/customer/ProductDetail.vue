@@ -147,7 +147,7 @@
         <!-- Size Selector -->
         <div class="divider space-y-2.5 pt-4">
           <div class="flex justify-between items-center text-xs">
-            <span class="font-bold text-[var(--text)]">Select size: <strong class="text-[var(--accent)]">{{ selectedSize }}</strong></span>
+            <span class="font-bold text-[var(--text)]">Select size: <strong class="text-[var(--accent)]">{{ selectedSize || 'Choose one' }}</strong></span>
             <button class="text-[var(--text-muted)] hover:text-[var(--accent)] font-medium underline cursor-pointer">Size guide</button>
           </div>
           <div class="flex flex-wrap gap-2.5">
@@ -165,7 +165,7 @@
 
         <!-- Color Selector -->
         <div class="divider space-y-2.5 pt-4">
-          <span class="font-bold text-xs text-[var(--text)] block">Select color: <strong class="text-[var(--accent)]">{{ selectedColor }}</strong></span>
+          <span class="font-bold text-xs text-[var(--text)] block">Select color: <strong class="text-[var(--accent)]">{{ selectedColor || 'Choose one' }}</strong></span>
           <div class="flex flex-wrap gap-2">
             <button
               v-for="color in product.colors"
@@ -238,6 +238,7 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useStore } from 'vuex';
 import { useRoute, useRouter } from 'vue-router';
+import { ErrorToast } from '@/functions/sweetalert';
 
 export default {
   name: 'ProductDetail',
@@ -283,8 +284,10 @@ export default {
       const data = await store.dispatch('products/fetchProductById', id);
       if (data) {
         activeImage.value = data.images?.[0] || '';
-        selectedSize.value = data.sizes?.[0] || 'M';
-        selectedColor.value = data.colors?.[0] || 'Black';
+        // Nothing is pre-selected, so customers pick their own size and colour
+        // (only auto-picked when there is just one option)
+        selectedSize.value = data.sizes?.length === 1 ? data.sizes[0] : '';
+        selectedColor.value = data.colors?.length === 1 ? data.colors[0] : '';
       }
     };
 
@@ -296,8 +299,21 @@ export default {
       loadProduct();
     });
 
+    const choicesMade = () => {
+      const needSize = (product.value?.sizes?.length || 0) > 0 && !selectedSize.value;
+      const needColor = (product.value?.colors?.length || 0) > 0 && !selectedColor.value;
+      if (needSize || needColor) {
+        ErrorToast(
+          'Please choose',
+          needSize && needColor ? 'Select a size and a color first.' : needSize ? 'Select a size first.' : 'Select a color first.'
+        );
+        return false;
+      }
+      return true;
+    };
+
     const handleAddToCart = () => {
-      if (!product.value) return;
+      if (!product.value || !choicesMade()) return;
       store.dispatch('cart/addToCart', {
         product: product.value,
         size: selectedSize.value,
@@ -308,7 +324,7 @@ export default {
     };
 
     const handleBuyNow = async () => {
-      if (!product.value) return;
+      if (!product.value || !choicesMade()) return;
       const added = await store.dispatch('cart/addToCart', {
         product: product.value,
         size: selectedSize.value,

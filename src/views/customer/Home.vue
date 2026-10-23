@@ -261,11 +261,14 @@
 <script>
 import { computed, onMounted, nextTick, ref, watch } from 'vue';
 import { useStore } from 'vuex';
+import { useRouter } from 'vue-router';
+import { quickAddOrChoose } from '@/functions/quickAdd';
 
 export default {
   name: 'Home',
   setup() {
     const store = useStore();
+    const router = useRouter();
 
     const categories = computed(() => store.getters['products/allCategories']);
     const bestSellers = computed(() => store.getters['products/bestSellers']);
@@ -302,13 +305,7 @@ export default {
     };
 
     const quickAddToCart = (product) => {
-      store.dispatch('cart/addToCart', {
-        product,
-        size: product.sizes?.[0] || 'M',
-        color: product.colors?.[0] || 'Black',
-        quantity: 1,
-        openDrawer: true
-      });
+      quickAddOrChoose(store, router, product);
     };
 
     return {

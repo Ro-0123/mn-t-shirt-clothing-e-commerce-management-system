@@ -15,8 +15,6 @@ import adminRoutes from './backend/routes/adminRoutes.js';
 import cartRoutes from './backend/routes/cartRoutes.js';
 import storeInfoRoutes from './backend/routes/storeInfoRoutes.js';
 import { errorHandler } from './backend/middleware/errorHandler.js';
-import { authenticate, authorize } from './backend/middleware/auth.js';
-import { syncDummyJson } from './backend/controllers/syncController.js';
 
 const app = express();
 const PORT = 3000;
@@ -41,14 +39,14 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'API is running', database: 'connected' });
 });
 
-app.post('/api/sync-dummyjson', authenticate, authorize('staff', 'admin'), syncDummyJson);
-
 app.use('/api', errorHandler);
 
 // Vite Middleware & Static Serving
 async function startServer() {
   await sequelize.authenticate();
-  await sequelize.sync({ alter: true });
+  // `alter: true` re-adds every UNIQUE index on each start, eventually hitting
+  // MySQL's 64-key limit. Opt in via DB_SYNC_ALTER=true only after model changes.
+  await sequelize.sync({ alter: process.env.DB_SYNC_ALTER === 'true' });
 
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

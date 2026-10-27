@@ -29,16 +29,6 @@
 
     <!-- Right navbar links -->
     <div class="flex items-center gap-3">
-      <!-- Sync with DummyJSON Button -->
-      <button
-        @click="syncDummyJson"
-        class="hidden md:flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-[var(--text)] bg-[var(--bg-alt)] hover:bg-[var(--border)] border border-[var(--border)] rounded-sm transition-colors cursor-pointer"
-        title="Fetch sample shirts from DummyJSON API"
-      >
-        <i class="fa-solid fa-cloud-arrow-down text-[var(--accent)]"></i>
-        <span>Sync DummyJSON API</span>
-      </button>
-
       <!-- Low stock alerts: click to see which products are running out -->
       <div ref="bellRef" class="relative">
         <button
@@ -147,18 +137,13 @@ export default {
     onMounted(() => document.addEventListener('click', closeOnOutsideClick));
     onUnmounted(() => document.removeEventListener('click', closeOnOutsideClick));
 
-    const syncDummyJson = () => {
-      store.dispatch('admin/syncDummyJson');
-    };
-
     return {
       user,
       userRole,
       lowStockCount,
       lowStockProducts,
       showAlerts,
-      bellRef,
-      syncDummyJson
+      bellRef
     };
   }
 };

@@ -14,7 +14,6 @@ import {
   fetchAnalyticsReportApi,
   fetchStoreInfoApi,
   updateStoreInfoApi,
-  syncDummyJsonApi,
   createProductApi,
   updateProductApi,
   deleteProductApi,
@@ -313,17 +312,6 @@ export default {
         SuccessToast('Store settings saved successfully');
       } catch (err) {
         ErrorToast('Failed to save settings');
-      }
-    },
-
-    async syncDummyJson({ dispatch }) {
-      try {
-        const res = await syncDummyJsonApi();
-        SuccessToast(res.data.message);
-        dispatch('products/fetchProducts', {}, { root: true });
-        dispatch('products/fetchCategories', null, { root: true });
-      } catch (err) {
-        ErrorToast('DummyJSON sync error');
       }
     }
   }

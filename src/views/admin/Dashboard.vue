@@ -9,15 +9,6 @@
       </div>
 
       <div class="flex items-center gap-3">
-        <!-- Sync DummyJSON button -->
-        <button
-          @click="syncDummy"
-          class="px-3.5 py-2 bg-[var(--surface)] hover:bg-[var(--bg-alt)] text-[var(--text)] border border-[var(--border)] rounded-sm font-bold text-xs flex items-center gap-2 transition-colors cursor-pointer"
-        >
-          <i class="fa-solid fa-rotate text-[var(--accent)]"></i>
-          <span>Sync DummyJSON API</span>
-        </button>
-
         <router-link
           to="/admin/products"
           class="px-4 py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-sm font-bold text-xs flex items-center gap-2 transition-colors"
@@ -267,10 +258,6 @@ export default {
       store.dispatch('orders/fetchOrders');
     });
 
-    const syncDummy = () => {
-      store.dispatch('admin/syncDummyJson');
-    };
-
     const getStatusBadgeClass = (status) => {
       switch (status) {
         case 'Delivered': return 'bg-emerald-50 border border-emerald-200 text-emerald-700';
@@ -290,7 +277,6 @@ export default {
       suppliers,
       recentOrders,
       pendingOrdersCount,
-      syncDummy,
       getStatusBadgeClass
     };
   }

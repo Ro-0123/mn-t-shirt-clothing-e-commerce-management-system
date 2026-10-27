@@ -19,7 +19,10 @@
         <span v-if="product.discountPercentage > 0" class="px-2 py-0.5 bg-[var(--accent)] text-white font-black text-[10px] uppercase rounded-sm">
           -{{ product.discountPercentage }}%
         </span>
-        <span v-if="product.stock <= product.minStockLevel" class="px-2 py-0.5 bg-white border border-[var(--border-strong)] text-[var(--text)] font-bold text-[10px] uppercase rounded-sm">
+        <span v-if="product.stock <= 0" class="px-2 py-0.5 bg-[var(--text)] text-white font-bold text-[10px] uppercase rounded-sm">
+          Sold out
+        </span>
+        <span v-else-if="product.stock <= product.minStockLevel" class="px-2 py-0.5 bg-white border border-[var(--border-strong)] text-[var(--text)] font-bold text-[10px] uppercase rounded-sm">
           Low stock
         </span>
       </div>
@@ -72,8 +75,9 @@
           </router-link>
           <button
             @click.stop.prevent="quickAddToCart"
-            class="p-2 rounded-sm bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white transition-colors cursor-pointer text-xs"
-            title="Add to Shopping Bag"
+            :disabled="product.stock <= 0"
+            class="p-2 rounded-sm bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white transition-colors cursor-pointer text-xs disabled:bg-[var(--border)] disabled:text-[var(--text-muted)] disabled:cursor-not-allowed"
+            :title="product.stock <= 0 ? 'Out of stock' : 'Add to Shopping Bag'"
           >
             <i class="fa-solid fa-bag-shopping"></i>
           </button>

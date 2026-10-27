@@ -30,6 +30,7 @@ export const removeFromWishlistApi = (productId) => apiClient.delete(`/wishlist/
 export const fetchOrdersApi = () => apiClient.get('/orders');
 export const fetchOrderByIdApi = (id) => apiClient.get(`/orders/${id}`);
 export const createOrderApi = (orderData) => apiClient.post('/orders', orderData);
+export const checkOrderStockApi = (items) => apiClient.post('/orders/check-stock', { items });
 export const updateOrderStatusApi = (id, statusData) => apiClient.put(`/orders/${id}/status`, statusData);
 export const cancelOrderApi = (id, cancelReason) => apiClient.put(`/orders/${id}/cancel`, { cancelReason });
 export const requestPaymentApi = (data) => apiClient.post('/payments/request', data);
@@ -65,13 +66,13 @@ export const updateUserApi = (id, data) => apiClient.put(`/admin/users/${id}`, d
 export const deleteUserApi = (id) => apiClient.delete(`/admin/users/${id}`);
 
 // Reports & Store Info
-export const fetchAnalyticsReportApi = () => apiClient.get('/admin/analytics');
-export const generateReportApi = (reportType) => apiClient.post('/admin/reports', { reportType });
+// params / range: optional { from: 'YYYY-MM', to: 'YYYY-MM' }
+export const fetchAnalyticsReportApi = (params = {}) => apiClient.get('/admin/analytics', { params });
+export const generateReportApi = (reportType, range = {}) => apiClient.post('/admin/reports', { reportType, ...range });
 export const fetchReportsApi = () => apiClient.get('/admin/reports');
 export const fetchReportByIdApi = (id) => apiClient.get(`/admin/reports/${id}`);
 export const fetchStoreInfoApi = () => apiClient.get('/store-info');
 export const updateStoreInfoApi = (data) => apiClient.put('/store-info', data);
-export const syncDummyJsonApi = () => apiClient.post('/sync-dummyjson');
 
 // Auth APIs
 export const loginApi = (credentials) => apiClient.post('/auth/login', credentials);

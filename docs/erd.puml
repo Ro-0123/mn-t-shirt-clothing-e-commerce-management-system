@@ -1,0 +1,198 @@
+@startuml MN_TShirt_ERD
+' Entity Relationship Diagram for MN T-Shirt Clothing E-Commerce Management System
+' Derived from database/mn_tshirt_ecommerce.sql and backend/models/index.js
+' createdAt / updatedAt (DATETIME) exist on every table except wishlists and are omitted for space.
+' Render at https://www.plantuml.com/plantuml or with the VS Code PlantUML extension.
+
+hide circle
+skinparam linetype ortho
+skinparam entity {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+}
+
+entity "users" as users {
+  * id : INT <<PK>>
+  --
+  * firstName : VARCHAR(100)
+  * lastName : VARCHAR(100)
+  * email : VARCHAR(255) <<UQ>>
+  * password : VARCHAR(255)
+  phone : VARCHAR(50)
+  address : TEXT
+  city : VARCHAR(100)
+  state : VARCHAR(100)
+  zipCode : VARCHAR(20)
+  country : VARCHAR(100)
+  * role : ENUM(customer, staff, admin)
+  * isActive : BOOLEAN
+  profileImage : VARCHAR(500)
+}
+
+entity "categories" as categories {
+  * id : INT <<PK>>
+  --
+  * name : VARCHAR(150) <<UQ>>
+  description : TEXT
+  image : VARCHAR(500)
+  * isActive : BOOLEAN
+}
+
+entity "suppliers" as suppliers {
+  * id : INT <<PK>>
+  --
+  * companyName : VARCHAR(200)
+  contactPerson : VARCHAR(150)
+  email : VARCHAR(255)
+  phone : VARCHAR(50)
+  address : TEXT
+  city : VARCHAR(100)
+  country : VARCHAR(100)
+  * isActive : BOOLEAN
+  notes : TEXT
+}
+
+entity "products" as products {
+  * id : INT <<PK>>
+  --
+  * name : VARCHAR(255)
+  description : TEXT
+  * price : DECIMAL(10,2)
+  discountPrice : DECIMAL(10,2)
+  * categoryId : INT <<FK>>
+  supplierId : INT <<FK>>
+  image : VARCHAR(500)
+  images : JSON
+  sizes : JSON
+  colors : JSON
+  material : VARCHAR(100)
+  * rating : FLOAT
+  * reviewCount : INT
+  * isActive : BOOLEAN
+}
+
+entity "stocks" as stocks {
+  * id : INT <<PK>>
+  --
+  * productId : INT <<FK, UQ>>
+  * quantity : INT
+  * minStockLevel : INT
+  warehouseLocation : VARCHAR(150)
+  lastRestockedAt : DATETIME
+  notes : TEXT
+}
+
+entity "orders" as orders {
+  * id : INT <<PK>>
+  --
+  * orderNumber : VARCHAR(50) <<UQ>>
+  * userId : INT <<FK>>
+  * totalAmount : DECIMAL(10,2)
+  * shippingCost : DECIMAL(10,2)
+  * finalAmount : DECIMAL(10,2)
+  * storeCreditUsed : DECIMAL(10,2)
+  * status : ENUM
+  * paymentStatus : ENUM
+  paymentMethod : ENUM
+  * shippingAddress : JSON
+  notes : TEXT
+  trackingNumber : VARCHAR(100)
+  deliveryDate : DATETIME
+}
+
+entity "order_items" as order_items {
+  * id : INT <<PK>>
+  --
+  * orderId : INT <<FK>>
+  * productId : INT <<FK>>
+  * quantity : INT
+  * price : DECIMAL(10,2)
+  size : VARCHAR(50)
+  color : VARCHAR(50)
+  * totalPrice : DECIMAL(10,2)
+}
+
+entity "deliveries" as deliveries {
+  * id : INT <<PK>>
+  --
+  * orderId : INT <<FK, UQ>>
+  * status : ENUM
+  courierName : VARCHAR(150)
+  trackingNumber : VARCHAR(100)
+  shippingAddress : JSON
+  shippedAt : DATETIME
+  deliveredAt : DATETIME
+  notes : TEXT
+}
+
+entity "payments" as payments {
+  * id : INT <<PK>>
+  --
+  * orderId : INT <<FK>>
+  * userId : INT <<FK>>
+  * amount : DECIMAL(10,2)
+  * paymentMethod : ENUM
+  transactionId : VARCHAR(255)
+  * status : ENUM
+  paidAt : DATETIME
+}
+
+entity "carts" as carts {
+  * id : INT <<PK>>
+  --
+  * userId : INT <<FK, UQ>>
+  * items : JSON
+  * totalItems : INT
+  * totalPrice : DECIMAL(10,2)
+}
+
+entity "wishlists" as wishlists {
+  * id : INT <<PK>>
+  --
+  * userId : INT <<FK>>
+  * productId : INT <<FK>>
+  * addedAt : DATETIME
+  .. UNIQUE (userId, productId) ..
+}
+
+entity "reports" as reports {
+  * id : INT <<PK>>
+  --
+  * requestedBy : INT <<FK>>
+  * reportType : ENUM(sales, users, orders, stocks, summary)
+  * title : VARCHAR(255)
+  * data : JSON
+}
+
+entity "store_info" as store_info {
+  * id : INT <<PK>>
+  --
+  name : VARCHAR
+  email : VARCHAR
+  phone : VARCHAR
+  address : VARCHAR
+  returnPolicy : TEXT
+  currency : VARCHAR
+  freeShippingThreshold : DECIMAL(10,2)
+  standardShippingFee : DECIMAL(10,2)
+  taxRate : DECIMAL(5,2)
+}
+
+' ---- Relationships ----
+categories ||--o{ products : contains
+suppliers |o--o{ products : supplies
+products ||--o| stocks : "tracked by"
+products ||--o{ order_items : "sold as"
+products ||--o{ wishlists : "saved in"
+
+users ||--o{ orders : places
+users ||--o| carts : owns
+users ||--o{ wishlists : keeps
+users ||--o{ payments : makes
+users ||--o{ reports : requests
+
+orders ||--|{ order_items : contains
+orders ||--o{ payments : "paid by"
+orders ||--o| deliveries : "shipped via"
+
+@enduml

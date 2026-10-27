@@ -5,7 +5,7 @@ import {
   removeCartItemApi,
   clearCartApi
 } from '@/api';
-import { SuccessToast, InfoToast } from '@/functions/sweetalert';
+import { SuccessToast, InfoToast, ErrorToast } from '@/functions/sweetalert';
 
 const normalizeCartItems = (items, products = [], addedProduct = null) => {
   const productMap = new Map(products.map(product => [Number(product.id), product]));
@@ -94,7 +94,8 @@ export default {
         if (err?.response?.status === 401) {
           await redirectToLogin();
         } else {
-          console.error(err);
+          // e.g. out of stock
+          ErrorToast('Could not add to bag', err.parsedMessage || err.message);
         }
         return false;
       }
@@ -105,7 +106,8 @@ export default {
         const res = await updateCartItemApi({ productId, size, color, quantity });
         commit('SET_CART', res.data);
       } catch (err) {
-        console.error(err);
+        // e.g. asking for more than is in stock
+        ErrorToast('Could not update quantity', err.parsedMessage || err.message);
       }
     },
 

@@ -136,7 +136,10 @@
             class="w-2.5 h-2.5 rounded-full"
             :class="product.stock > product.minStockLevel ? 'bg-[var(--text)]' : 'bg-[var(--accent)]'"
           ></span>
-          <span v-if="product.stock > product.minStockLevel" class="text-[var(--text)] font-bold">
+          <span v-if="isOutOfStock" class="text-[var(--accent)] font-bold">
+            Out of stock &mdash; this item is currently unavailable
+          </span>
+          <span v-else-if="product.stock > product.minStockLevel" class="text-[var(--text)] font-bold">
             In stock ({{ product.stock }} items available in Phnom Penh hub)
           </span>
           <span v-else class="text-[var(--accent)] font-bold">
@@ -183,7 +186,7 @@
         <div class="divider space-y-3 pt-5">
           <div class="flex items-center gap-3">
             <!-- Qty Selector -->
-            <div class="flex items-center border border-[var(--border)] rounded-sm overflow-hidden h-12">
+            <div v-if="!isOutOfStock" class="flex items-center border border-[var(--border)] rounded-sm overflow-hidden h-12">
               <button
                 @click="quantity = Math.max(1, quantity - 1)"
                 class="px-4 py-2 text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-alt)] transition-colors font-bold text-sm cursor-pointer"
@@ -201,6 +204,15 @@
 
             <!-- Add to Bag Button -->
             <button
+              v-if="isOutOfStock"
+              disabled
+              class="flex-1 h-12 bg-[var(--bg-alt)] text-[var(--text-muted)] border border-[var(--border)] rounded-sm font-bold text-sm flex items-center justify-center gap-2 cursor-not-allowed"
+            >
+              <i class="fa-solid fa-ban"></i>
+              <span>Out of stock</span>
+            </button>
+            <button
+              v-else
               @click="handleAddToCart"
               class="flex-1 h-12 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-sm font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
@@ -220,6 +232,7 @@
 
           <!-- Fast Checkout Button -->
           <button
+            v-if="!isOutOfStock"
             @click="handleBuyNow"
             class="w-full py-3 border border-[var(--border)] hover:border-[var(--text)] text-[var(--text)] rounded-sm font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
           >
@@ -255,6 +268,7 @@ export default {
     const product = computed(() => store.getters['products/allProducts'].find(p => p.id === parseInt(route.params.id)) || store.state.products.currentProduct);
     const isLoading = computed(() => store.getters['products/isLoading']);
     const isInWishlist = computed(() => product.value ? store.getters['wishlist/isInWishlist'](product.value.id) : false);
+    const isOutOfStock = computed(() => Number(product.value?.stock || 0) <= 0);
 
     // Image gallery navigation
     const images = computed(() => product.value?.images || []);
@@ -313,7 +327,7 @@ export default {
     };
 
     const handleAddToCart = () => {
-      if (!product.value || !choicesMade()) return;
+      if (!product.value || isOutOfStock.value || !choicesMade()) return;
       store.dispatch('cart/addToCart', {
         product: product.value,
         size: selectedSize.value,
@@ -324,7 +338,7 @@ export default {
     };
 
     const handleBuyNow = async () => {
-      if (!product.value || !choicesMade()) return;
+      if (!product.value || isOutOfStock.value || !choicesMade()) return;
       const added = await store.dispatch('cart/addToCart', {
         product: product.value,
         size: selectedSize.value,
@@ -343,6 +357,7 @@ export default {
 
     return {
       product,
+      isOutOfStock,
       isLoading,
       activeImage,
       activeIndex,

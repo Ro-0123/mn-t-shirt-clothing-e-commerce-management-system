@@ -18,20 +18,6 @@
     </div>
 
     <div class="p-4 flex-1 overflow-y-auto space-y-6 text-xs">
-      <!-- Quick API sync -->
-      <div class="space-y-2">
-        <h5 class="font-bold text-[var(--text)] uppercase tracking-wider text-[11px]">DummyJSON Integration</h5>
-        <p class="text-[var(--text-muted)] text-[11px] leading-relaxed">
-          Sync DummyJSON shirt categories and mock products directly into our local database.
-        </p>
-        <button
-          @click="syncDummy"
-          class="w-full py-2 px-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-sm font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
-        >
-          <i class="fa-solid fa-rotate"></i> Sync Products
-        </button>
-      </div>
-
       <!-- System Telemetry & Status -->
       <div class="space-y-3 pt-4 border-t border-[var(--border)]">
         <h5 class="font-bold text-[var(--text)] uppercase tracking-wider text-[11px]">Server Metrics</h5>
@@ -60,8 +46,6 @@
 
 
 <script>
-import { useStore } from 'vuex';
-
 export default {
   name: 'ControlSidebar',
   props: {
@@ -70,17 +54,6 @@ export default {
       default: false
     }
   },
-  emits: ['close'],
-  setup() {
-    const store = useStore();
-
-    const syncDummy = () => {
-      store.dispatch('admin/syncDummyJson');
-    };
-
-    return {
-      syncDummy
-    };
-  }
+  emits: ['close']
 };
 </script>

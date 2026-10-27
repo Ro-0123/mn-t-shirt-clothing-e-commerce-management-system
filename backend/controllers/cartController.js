@@ -1,5 +1,21 @@
-import { Cart, Product } from '../models/index.js';
+import { Cart, Product, Stock } from '../models/index.js';
 import { parseJsonArray } from './productController.js';
+
+// Every size/colour of a product comes out of one stock count. Returns a
+// message when `wanted` units of the product can't be supplied, else null.
+const findStockError = async (product, wanted) => {
+  const stock = await Stock.findOne({ where: { productId: product.id } });
+  const availableQty = stock?.quantity ?? 0;
+  if (availableQty <= 0) return `Sorry, ${product.name} is out of stock.`;
+  if (wanted > availableQty) return `Only ${availableQty} left in stock for ${product.name}.`;
+  return null;
+};
+
+// Units of a product already in the cart, across all its sizes/colours
+const qtyInCart = (items, productId, skipIdx = -1) => items.reduce(
+  (sum, i, idx) => (idx !== skipIdx && Number(i.productId) === Number(productId) ? sum + Number(i.quantity || 0) : sum),
+  0,
+);
 
 const getOrCreateCart = async (userId) => {
   const [cart] = await Cart.findOrCreate({ where: { userId }, defaults: { userId, items: [] } });
@@ -50,6 +66,11 @@ export const addToCart = async (req, res, next) => {
     if (productColors.length && !productColors.includes(color)) {
       return res.status(400).json({ message: 'Please choose a color for this product.' });
     }
+    const stockError = await findStockError(product, qtyInCart(items, productId) + Number(quantity || 1));
+    if (stockError) {
+      return res.status(400).json({ message: stockError });
+    }
+
     const resolvedSize = size || '';
     const resolvedColor = color || '';
     const existingIdx = items.findIndex(
@@ -97,6 +118,16 @@ export const updateCartItem = async (req, res, next) => {
       if (Number(quantity) <= 0) {
         items.splice(idx, 1);
       } else {
+        // Only going up needs stock; lowering a quantity is always allowed
+        if (Number(quantity) > Number(items[idx].quantity || 0)) {
+          const product = await Product.findByPk(productId);
+          const stockError = product
+            ? await findStockError(product, qtyInCart(items, productId, idx) + Number(quantity))
+            : 'Product not found';
+          if (stockError) {
+            return res.status(400).json({ message: stockError });
+          }
+        }
         items[idx] = { ...items[idx], quantity: Number(quantity) };
       }
     }

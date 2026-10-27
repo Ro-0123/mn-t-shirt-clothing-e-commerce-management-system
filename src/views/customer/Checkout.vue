@@ -397,7 +397,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
 import QRCode from 'qrcode';
-import { generateKhqrApi, checkKhqrPaymentByMd5Api, generatePaywayPaymentApi, checkPaywayPaymentApi } from '@/api';
+import { generateKhqrApi, checkKhqrPaymentByMd5Api, generatePaywayPaymentApi, checkPaywayPaymentApi, checkOrderStockApi } from '@/api';
 import { LoadingModal, CloseModal, ErrorToast } from '@/functions/sweetalert';
 
 const ONLINE_PAYMENT_METHODS = ['ABA_QR', 'PAYWAY_QR', 'PAYWAY_CARD'];
@@ -638,8 +638,21 @@ export default {
       }
     };
 
+    // Checked before any payment is shown: an order for a sold-out item would be
+    // rejected only AFTER the customer had already paid.
+    const ensureInStock = async () => {
+      try {
+        await checkOrderStockApi(cartItems.value);
+        return true;
+      } catch (err) {
+        ErrorToast('Out of stock', err.parsedMessage || err.message);
+        return false;
+      }
+    };
+
     const handlePlaceOrder = async () => {
       if (cartItems.value.length === 0) return;
+      if (!isPaid.value && !(await ensureInStock())) return;
 
       // Store credit covers everything -- nothing to pay, place the order now
       if (coveredByCredit.value) {
@@ -666,7 +679,11 @@ export default {
       stopPolling();
     };
 
-    const refreshPayment = () => {
+    const refreshPayment = async () => {
+      if (!(await ensureInStock())) {
+        closePaymentModal();
+        return;
+      }
       if (paymentMethod.value === 'ABA_QR') loadKhqrPreview();
       else if (paymentMethod.value === 'PAYWAY_QR') loadPaywayPreview('');
       else if (paymentMethod.value === 'PAYWAY_CARD') loadPaywayPreview('cards');

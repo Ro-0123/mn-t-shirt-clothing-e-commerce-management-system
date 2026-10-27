@@ -21,28 +21,53 @@ const serializeUser = (user) => {
   };
 };
 
+// "YYYY-MM" -> midnight on the 1st of that month (server time), or null
+const monthStart = (ym) => {
+  const m = /^(\d{4})-(\d{2})$/.exec(ym || '');
+  return m && Number(m[2]) >= 1 && Number(m[2]) <= 12 ? new Date(Number(m[1]), Number(m[2]) - 1, 1) : null;
+};
+
+// { from: 'YYYY-MM', to: 'YYYY-MM' } -> { start, end (exclusive), months }.
+// Returns undefined when neither is given and null when the range is invalid.
+const parseMonthRange = ({ from, to } = {}) => {
+  if (!from && !to) return undefined;
+  const start = monthStart(from);
+  const last = monthStart(to);
+  if (!start || !last || last < start) return null;
+  const months = (last.getFullYear() - start.getFullYear()) * 12 + (last.getMonth() - start.getMonth()) + 1;
+  return { start, end: new Date(last.getFullYear(), last.getMonth() + 1, 1), months };
+};
+
+const createdBetween = ({ start, end }) => ({ createdAt: { [Op.gte]: start, [Op.lt]: end } });
+
 export const getAnalytics = async (req, res, next) => {
   try {
+    const range = parseMonthRange(req.query);
+    if (range === null) {
+      return res.status(400).json({ message: 'Invalid date range' });
+    }
+    // Order-based figures cover only the chosen months; product, customer and stock counts are always current
+    const inRange = range ? createdBetween(range) : {};
+
     const [totalOrders, completedOrders, activeProductsCount, customerCount, lowStockCount, totalRevenue] = await Promise.all([
-      Order.count({ where: { status: { [Op.ne]: 'cancelled' } } }),
-      Order.count({ where: { status: 'delivered' } }),
+      Order.count({ where: { ...inRange, status: { [Op.ne]: 'cancelled' } } }),
+      Order.count({ where: { ...inRange, status: 'delivered' } }),
       Product.count({ where: { isActive: true } }),
       User.count({ where: { role: 'customer' } }),
       Stock.count({ where: literal('quantity <= minStockLevel') }),
-      Order.sum('finalAmount', { where: { paymentStatus: 'completed' } }),
+      Order.sum('finalAmount', { where: { ...inRange, paymentStatus: 'completed' } }),
     ]);
 
     const orderItems = await OrderItem.findAll({
       include: [
         { model: Product, attributes: ['id', 'name', 'sku', 'images', 'image', 'categoryId'], include: [{ model: Category, attributes: ['name'] }] },
-        { model: Order, attributes: ['paymentStatus'] },
+        { model: Order, attributes: ['paymentStatus'], where: { ...inRange, paymentStatus: 'completed' } },
       ],
     });
 
     const categoryRevenue = {};
     const productSalesMap = {};
     orderItems.forEach((item) => {
-      if (item.Order?.paymentStatus !== 'completed') return;
       const revenue = Number(item.price) * item.quantity;
       const catName = item.Product?.Category?.name || 'Other';
       categoryRevenue[catName] = (categoryRevenue[catName] || 0) + revenue;
@@ -65,22 +90,26 @@ export const getAnalytics = async (req, res, next) => {
 
     const topSelling = Object.values(productSalesMap).sort((a, b) => b.unitsSold - a.unitsSold);
 
-    // Paid orders drive average order value, delivery rate and the period comparison
+    // Paid orders drive average order value, delivery rate and the period comparison.
+    // The comparison is the chosen months vs the same number of months just before
+    // them, or (no range) the last 30 days vs the 30 days before that.
     const DAY = 24 * 60 * 60 * 1000;
     const now = Date.now();
-    const last30Start = new Date(now - 30 * DAY);
-    const prev30Start = new Date(now - 60 * DAY);
-    const [paidOrdersCount, paidDeliveredCount, allOrdersCount, cancelledCount, revenueLast30, revenuePrev30] = await Promise.all([
-      Order.count({ where: { paymentStatus: 'completed' } }),
-      Order.count({ where: { paymentStatus: 'completed', status: 'delivered' } }),
-      Order.count(),
-      Order.count({ where: { status: 'cancelled' } }),
-      Order.sum('finalAmount', { where: { paymentStatus: 'completed', createdAt: { [Op.gte]: last30Start } } }),
-      Order.sum('finalAmount', { where: { paymentStatus: 'completed', createdAt: { [Op.gte]: prev30Start, [Op.lt]: last30Start } } }),
+    const currentPeriod = range || { start: new Date(now - 30 * DAY), end: new Date(now) };
+    const previousPeriod = range
+      ? { start: new Date(range.start.getFullYear(), range.start.getMonth() - range.months, 1), end: range.start }
+      : { start: new Date(now - 60 * DAY), end: currentPeriod.start };
+    const [paidOrdersCount, paidDeliveredCount, allOrdersCount, cancelledCount, revenueCurrentPeriod, revenuePreviousPeriod] = await Promise.all([
+      Order.count({ where: { ...inRange, paymentStatus: 'completed' } }),
+      Order.count({ where: { ...inRange, paymentStatus: 'completed', status: 'delivered' } }),
+      Order.count({ where: inRange }),
+      Order.count({ where: { ...inRange, status: 'cancelled' } }),
+      Order.sum('finalAmount', { where: { ...createdBetween(currentPeriod), paymentStatus: 'completed' } }),
+      Order.sum('finalAmount', { where: { ...createdBetween(previousPeriod), paymentStatus: 'completed' } }),
     ]);
     const round2 = (n) => Math.round((n || 0) * 100) / 100;
-    const revenueChangePct = revenuePrev30 > 0
-      ? round2(((revenueLast30 || 0) - revenuePrev30) / revenuePrev30 * 100)
+    const revenueChangePct = revenuePreviousPeriod > 0
+      ? round2(((revenueCurrentPeriod || 0) - revenuePreviousPeriod) / revenuePreviousPeriod * 100)
       : null; // nothing to compare against
 
     const recentOrders = await Order.findAll({
@@ -107,8 +136,8 @@ export const getAnalytics = async (req, res, next) => {
       allOrdersCount,
       cancelledCount,
       avgOrderValue: paidOrdersCount ? round2((totalRevenue || 0) / paidOrdersCount) : 0,
-      revenueLast30: round2(revenueLast30),
-      revenuePrev30: round2(revenuePrev30),
+      revenueCurrentPeriod: round2(revenueCurrentPeriod),
+      revenuePreviousPeriod: round2(revenuePreviousPeriod),
       revenueChangePct,
       recentOrders: recentOrders.map(serializeOrder),
     });
@@ -117,7 +146,10 @@ export const getAnalytics = async (req, res, next) => {
   }
 };
 
-const buildReportData = async (reportType) => {
+// `range` limits the order/sales figures to those months; users and stocks are always a current snapshot
+const buildReportData = async (reportType, range) => {
+  const inRange = range ? createdBetween(range) : {};
+
   if (reportType === 'users') {
     const users = await User.findAll({
       attributes: { exclude: ['password'] },
@@ -135,8 +167,9 @@ const buildReportData = async (reportType) => {
   }
 
   if (reportType === 'orders') {
-    const orders = await Order.findAll({ order: [['createdAt', 'DESC']] });
+    const orders = await Order.findAll({ where: inRange, order: [['createdAt', 'DESC']] });
     const ordersByStatus = await Order.findAll({
+      where: inRange,
       attributes: ['status', [Order.sequelize.fn('COUNT', Order.sequelize.col('id')), 'count']],
       group: ['status'],
     });
@@ -151,7 +184,7 @@ const buildReportData = async (reportType) => {
 
   if (reportType === 'sales') {
     const payments = await Payment.findAll({
-      where: { status: 'completed' },
+      where: { status: 'completed', ...(range && { paidAt: { [Op.gte]: range.start, [Op.lt]: range.end } }) },
       include: [{ model: Order, attributes: ['orderNumber', 'finalAmount', 'createdAt'] }],
       order: [['paidAt', 'DESC']],
     });
@@ -163,8 +196,8 @@ const buildReportData = async (reportType) => {
     User.count(),
     User.count({ where: { role: 'customer' } }),
     User.count({ where: { role: 'staff' } }),
-    Order.count({ where: { status: { [Op.ne]: 'cancelled' } } }),
-    Order.sum('finalAmount', { where: { paymentStatus: 'completed' } }),
+    Order.count({ where: { ...inRange, status: { [Op.ne]: 'cancelled' } } }),
+    Order.sum('finalAmount', { where: { ...inRange, paymentStatus: 'completed' } }),
     Stock.count({ where: literal('quantity <= minStockLevel') }),
   ]);
 
@@ -304,7 +337,12 @@ export const requestReport = async (req, res, next) => {
       return res.status(400).json({ message: 'Invalid report type' });
     }
 
-    const data = await buildReportData(reportType);
+    const range = parseMonthRange(req.body);
+    if (range === null) {
+      return res.status(400).json({ message: 'Invalid date range' });
+    }
+
+    const data = await buildReportData(reportType, range);
     const titles = {
       sales: 'Sales Report',
       users: 'User List Report',
@@ -316,7 +354,9 @@ export const requestReport = async (req, res, next) => {
     const report = await Report.create({
       requestedBy: req.userId,
       reportType,
-      title: titles[reportType],
+      title: range && ['sales', 'orders', 'summary'].includes(reportType)
+        ? `${titles[reportType]} (${req.body.from} to ${req.body.to})`
+        : titles[reportType],
       data,
     });
 

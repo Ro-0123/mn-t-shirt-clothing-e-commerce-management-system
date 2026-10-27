@@ -109,6 +109,48 @@ const findOrderByIdentifier = (identifier, extraInclude = orderInclude) => {
   });
 };
 
+// The same product can be in the cart more than once (different size or
+// colour), and they all come out of one stock count -- so check the total.
+// Returns a message for the first product without enough stock, or null.
+// Unknown products are skipped here; createOrder reports those itself.
+const findStockProblem = async (items) => {
+  const qtyByProduct = {};
+  for (const item of items) {
+    qtyByProduct[item.productId] = (qtyByProduct[item.productId] || 0) + Number(item.quantity);
+  }
+
+  for (const [productId, wanted] of Object.entries(qtyByProduct)) {
+    const product = await Product.findByPk(productId, { include: [Stock] });
+    if (!product) continue;
+    const availableQty = product.Stock?.quantity ?? 0;
+    if (availableQty <= 0) {
+      return `Sorry, ${product.name} is out of stock. Please remove it from your bag.`;
+    }
+    if (availableQty < wanted) {
+      return `Only ${availableQty} left in stock for ${product.name}`;
+    }
+  }
+  return null;
+};
+
+// Checkout calls this BEFORE showing a KHQR / PayWay payment, so a customer
+// is never asked to pay for something that has already sold out.
+export const checkOrderStock = async (req, res, next) => {
+  try {
+    const { items } = req.body;
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: 'Order must contain items' });
+    }
+    const stockProblem = await findStockProblem(items);
+    if (stockProblem) {
+      return res.status(400).json({ message: stockProblem });
+    }
+    res.status(200).json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const createOrder = async (req, res, next) => {
   try {
     const { items, shippingAddress, paymentMethod, notes, courierName, khqrMd5, paywayTranId } = req.body;
@@ -124,22 +166,15 @@ export const createOrder = async (req, res, next) => {
     let subtotal = 0;
     const orderItems = [];
 
-    // The same product can be in the cart more than once (different size or
-    // colour), and they all come out of one stock count -- check the total.
-    const qtyByProduct = {};
-    for (const item of items) {
-      qtyByProduct[item.productId] = (qtyByProduct[item.productId] || 0) + Number(item.quantity);
+    const stockProblem = await findStockProblem(items);
+    if (stockProblem) {
+      return res.status(400).json({ message: stockProblem });
     }
 
     for (const item of items) {
-      const product = await Product.findByPk(item.productId, { include: [Stock] });
+      const product = await Product.findByPk(item.productId);
       if (!product) {
         return res.status(404).json({ message: `Product ${item.productId} not found` });
-      }
-
-      const availableQty = product.Stock?.quantity ?? 0;
-      if (availableQty < qtyByProduct[item.productId]) {
-        return res.status(400).json({ message: `Only ${availableQty} left in stock for ${product.name}` });
       }
 
       const itemTotal = product.price * item.quantity;

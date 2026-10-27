@@ -1,0 +1,119 @@
+@startuml MN_TShirt_UseCase
+' Use case diagram for MN T-Shirt Clothing E-Commerce Management System
+' Derived from backend/routes/*.js (authenticate / authorize roles)
+' Render at https://www.plantuml.com/plantuml or with the VS Code PlantUML extension.
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #FDFDFD
+  BorderColor #444444
+}
+
+actor "Guest" as Guest
+actor "Customer" as Customer
+actor "Staff" as Staff
+actor "Admin" as Admin
+
+actor "ABA PayWay" as PayWay <<system>>
+actor "Bakong KHQR" as KHQR <<system>>
+actor "Google reCAPTCHA" as Captcha <<system>>
+
+' Generalization: Customer can do everything a Guest can; Admin can do everything Staff can
+Guest <|-- Customer
+Staff <|-- Admin
+
+rectangle "MN T-Shirt E-Commerce System" {
+
+  package "Shopping (Public)" {
+    usecase "Browse Products" as UC_Browse
+    usecase "Search / Filter Products" as UC_Search
+    usecase "View Product Detail" as UC_Detail
+    usecase "View Categories" as UC_Cat
+    usecase "View Store Info" as UC_Store
+    usecase "Register Account" as UC_Register
+    usecase "Login" as UC_Login
+    usecase "Verify reCAPTCHA" as UC_Captcha
+  }
+
+  package "Customer Account" {
+    usecase "Manage Profile" as UC_Profile
+    usecase "Upload Avatar" as UC_Avatar
+    usecase "Manage Cart" as UC_Cart
+    usecase "Manage Wishlist" as UC_Wish
+    usecase "Checkout / Place Order" as UC_Checkout
+    usecase "Make Payment" as UC_Pay
+    usecase "Pay with KHQR" as UC_PayKHQR
+    usecase "Pay with PayWay (Card/QR)" as UC_PayWay
+    usecase "Cash on Delivery" as UC_COD
+    usecase "View Order History" as UC_Orders
+    usecase "Cancel Order" as UC_Cancel
+  }
+
+  package "Store Management (Staff)" {
+    usecase "View Dashboard Analytics" as UC_Dash
+    usecase "Manage Products" as UC_Prod
+    usecase "Upload Product Images" as UC_ProdImg
+    usecase "Manage Categories" as UC_MCat
+    usecase "Manage Stock" as UC_Stock
+    usecase "View Low-Stock Alerts" as UC_LowStock
+    usecase "Manage Suppliers" as UC_Supp
+    usecase "Update Order Status" as UC_OrderStatus
+    usecase "Confirm Payment" as UC_ConfirmPay
+    usecase "Manage Deliveries" as UC_Deliv
+  }
+
+  package "Administration (Admin only)" {
+    usecase "Manage Users & Roles" as UC_Users
+    usecase "Generate Reports" as UC_Reports
+    usecase "Update Store Info" as UC_MStore
+  }
+}
+
+' ---- Guest ----
+Guest --> UC_Browse
+Guest --> UC_Detail
+Guest --> UC_Cat
+Guest --> UC_Store
+Guest --> UC_Register
+Guest --> UC_Login
+UC_Browse <.. UC_Search : <<extend>>
+UC_Register ..> UC_Captcha : <<include>>
+UC_Login ..> UC_Captcha : <<include>>
+UC_Captcha --> Captcha
+
+' ---- Customer ----
+Customer --> UC_Profile
+Customer --> UC_Cart
+Customer --> UC_Wish
+Customer --> UC_Checkout
+Customer --> UC_Orders
+UC_Profile <.. UC_Avatar : <<extend>>
+UC_Checkout ..> UC_Pay : <<include>>
+UC_Pay <|-- UC_PayKHQR
+UC_Pay <|-- UC_PayWay
+UC_Pay <|-- UC_COD
+UC_PayKHQR --> KHQR
+UC_PayWay --> PayWay
+UC_Orders <.. UC_Cancel : <<extend>>
+
+' ---- Staff ----
+Staff --> UC_Login
+Staff --> UC_Dash
+Staff --> UC_Prod
+Staff --> UC_MCat
+Staff --> UC_Stock
+Staff --> UC_Supp
+Staff --> UC_OrderStatus
+Staff --> UC_ConfirmPay
+Staff --> UC_Deliv
+UC_Prod <.. UC_ProdImg : <<extend>>
+UC_Stock <.. UC_LowStock : <<extend>>
+
+' ---- Admin ----
+Admin --> UC_Users
+Admin --> UC_Reports
+Admin --> UC_MStore
+
+@enduml

@@ -2,10 +2,39 @@
   <div class="space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-display text-[var(--text)]">Reports & Sales Analytics</h1>
-        <p class="text-xs text-[var(--text-muted)] mt-0.5">Financial summaries, conversion rates, and garment sales performance</p>
+        <h1 class="text-2xl font-display text-[var(--text)]">Reports</h1>
+        <p class="text-xs text-[var(--text-muted)] mt-0.5">See how much you sold, which products sell best, and how your orders are doing</p>
       </div>
 
+    </div>
+
+    <!-- Period filter: presets or a custom month range -->
+    <div class="bg-[var(--surface)] rounded-sm border border-[var(--border)] p-4 flex flex-col lg:flex-row lg:items-center gap-4">
+      <div class="flex items-center gap-1 p-1 bg-[var(--bg-alt)] rounded-sm border border-[var(--border)] w-fit">
+        <button
+          v-for="(label, key) in PRESETS"
+          :key="key"
+          type="button"
+          @click="applyPreset(key)"
+          class="px-3 py-1.5 rounded-sm text-xs font-semibold transition-colors cursor-pointer"
+          :class="activePreset === key
+            ? 'bg-[var(--surface)] text-[var(--text)] shadow-sm'
+            : 'text-[var(--text-muted)] hover:text-[var(--text)]'"
+        >
+          {{ label }}
+        </button>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2 text-xs text-[var(--text-muted)]">
+        <span class="font-semibold">From</span>
+        <MonthPicker v-model="fromMonth" :max="toMonth" />
+        <span class="font-semibold ml-1">To</span>
+        <MonthPicker v-model="toMonth" :min="fromMonth" />
+      </div>
+
+      <span class="lg:ml-auto text-xs font-semibold text-[var(--text-muted)]">
+        <i v-if="isLoading" class="fa-solid fa-spinner fa-spin mr-1"></i>{{ rangeLabel }}
+      </span>
     </div>
 
     <!-- Saved Reports (stored in the `reports` table) -->
@@ -13,7 +42,7 @@
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border)] pb-3">
         <div>
           <h3 class="font-bold text-sm text-[var(--text)]">Saved Reports</h3>
-          <p class="text-[11px] text-[var(--text-muted)]">Generate a snapshot, save it, and download it as CSV anytime</p>
+          <p class="text-[11px] text-[var(--text-muted)]">Save a report and download it as a spreadsheet (CSV). Sales, orders and summary reports use the months you picked above; users and stock reports show today's numbers.</p>
         </div>
         <div class="flex items-center gap-2">
           <select
@@ -70,32 +99,32 @@
     <!-- Analytics Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       <div class="bg-[var(--surface)] rounded-sm border border-[var(--border)] p-5 space-y-1">
-        <span class="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Gross Sales</span>
+        <span class="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Total Sales</span>
         <p class="text-2xl font-display text-[var(--text)]">${{ money(metrics.totalRevenue) }}</p>
         <span v-if="metrics.revenueChangePct === null || metrics.revenueChangePct === undefined" class="text-[11px] text-[var(--text-muted)]">
-          ${{ money(metrics.revenueLast30) }} in the last 30 days
+          Money received from {{ metrics.paidOrdersCount || 0 }} paid {{ metrics.paidOrdersCount === 1 ? 'order' : 'orders' }}
         </span>
         <span v-else class="text-[11px] font-semibold" :class="metrics.revenueChangePct >= 0 ? 'text-emerald-700' : 'text-[var(--accent)]'">
-          {{ metrics.revenueChangePct >= 0 ? '+' : '' }}{{ metrics.revenueChangePct }}% vs previous 30 days
+          {{ metrics.revenueChangePct >= 0 ? 'Up' : 'Down' }} {{ Math.abs(metrics.revenueChangePct) }}% from the {{ monthsLabel }} before
         </span>
       </div>
 
       <div class="bg-[var(--surface)] rounded-sm border border-[var(--border)] p-5 space-y-1">
-        <span class="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Average Order Value</span>
-        <p class="text-2xl font-display text-[var(--accent)]">${{ money(metrics.avgOrderValue) }}</p>
-        <span class="text-[11px] text-[var(--text-muted)]">Across {{ metrics.paidOrdersCount || 0 }} paid orders</span>
+        <span class="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Average per Order</span>
+        <p class="text-2xl font-display text-[var(--text)]">${{ money(metrics.avgOrderValue) }}</p>
+        <span class="text-[11px] text-[var(--text-muted)]">Customers spend this much per order</span>
       </div>
 
       <div class="bg-[var(--surface)] rounded-sm border border-[var(--border)] p-5 space-y-1">
-        <span class="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Delivered</span>
+        <span class="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Orders Delivered</span>
         <p class="text-2xl font-display text-emerald-700">{{ pct(metrics.paidDeliveredCount, metrics.paidOrdersCount) }}%</p>
-        <span class="text-[11px] text-[var(--text-muted)]">{{ metrics.paidDeliveredCount || 0 }} of {{ metrics.paidOrdersCount || 0 }} paid orders</span>
+        <span class="text-[11px] text-[var(--text-muted)]">{{ metrics.paidDeliveredCount || 0 }} of {{ metrics.paidOrdersCount || 0 }} paid orders reached the customer</span>
       </div>
 
       <div class="bg-[var(--surface)] rounded-sm border border-[var(--border)] p-5 space-y-1">
-        <span class="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Cancellation Rate</span>
+        <span class="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Orders Cancelled</span>
         <p class="text-2xl font-display text-purple-700">{{ pct(metrics.cancelledCount, metrics.allOrdersCount) }}%</p>
-        <span class="text-[11px] text-[var(--text-muted)]">{{ metrics.cancelledCount || 0 }} of {{ metrics.allOrdersCount || 0 }} orders cancelled</span>
+        <span class="text-[11px] text-[var(--text-muted)]">{{ metrics.cancelledCount || 0 }} of {{ metrics.allOrdersCount || 0 }} orders were cancelled</span>
       </div>
     </div>
 
@@ -105,8 +134,8 @@
       <!-- Top Performing T-Shirts (8 cols) -->
       <div class="lg:col-span-8 bg-[var(--surface)] rounded-sm border border-[var(--border)] p-6 space-y-4">
         <div class="flex items-center justify-between border-b border-[var(--border)] pb-3">
-          <h3 class="font-bold text-sm text-[var(--text)]">Top Selling Garment Lines</h3>
-          <span class="text-xs text-[var(--text-muted)]">Ranked by units sold</span>
+          <h3 class="font-bold text-sm text-[var(--text)]">Best-Selling Products</h3>
+          <span class="text-xs text-[var(--text-muted)]">Most items sold first</span>
         </div>
 
         <div class="space-y-4">
@@ -131,7 +160,7 @@
               <p class="text-[10px] text-emerald-700 font-bold">${{ money(product.revenue) }}</p>
             </div>
           </div>
-          <p v-if="topSelling.length === 0" class="py-8 text-center text-xs text-[var(--text-muted)]">No paid orders yet.</p>
+          <p v-if="topSelling.length === 0" class="py-8 text-center text-xs text-[var(--text-muted)]">No paid orders in this period.</p>
         </div>
       </div>
 
@@ -149,7 +178,7 @@
               <div class="bg-[var(--accent)] h-full rounded-full" :style="{ width: `${cat.percent}%` }"></div>
             </div>
           </div>
-          <p v-if="categoryShare.length === 0" class="py-8 text-center text-[var(--text-muted)]">No paid orders yet.</p>
+          <p v-if="categoryShare.length === 0" class="py-8 text-center text-[var(--text-muted)]">No paid orders in this period.</p>
         </div>
       </div>
 
@@ -158,10 +187,29 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue';
-import { useStore } from 'vuex';
+import { ref, computed, watch, onMounted } from 'vue';
 import { SuccessToast, ErrorToast } from '@/functions/sweetalert';
-import { generateReportApi, fetchReportsApi, fetchReportByIdApi } from '@/api';
+import { generateReportApi, fetchReportsApi, fetchReportByIdApi, fetchAnalyticsReportApi } from '@/api';
+import MonthPicker from '@/components/includes/MonthPicker.vue';
+
+const PRESETS = {
+  last12: 'Last 12 months',
+  thisYear: 'This year',
+  lastYear: 'Last year',
+};
+
+// Date -> "YYYY-MM"
+const toMonthValue = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+const presetRange = (key) => {
+  const now = new Date();
+  const year = now.getFullYear();
+  if (key === 'thisYear') return { from: `${year}-01`, to: `${year}-12` };
+  if (key === 'lastYear') return { from: `${year - 1}-01`, to: `${year - 1}-12` };
+  return { from: toMonthValue(new Date(year, now.getMonth() - 11, 1)), to: toMonthValue(now) };
+};
+
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const REPORT_TYPES = {
   summary: 'System Summary',
@@ -206,11 +254,58 @@ const reportToCsv = (data) => {
 
 export default {
   name: 'AdminReports',
+  components: { MonthPicker },
   setup() {
-    const store = useStore();
+    // Selected period as "YYYY-MM" months, both ends included
+    const initialRange = presetRange('last12');
+    const fromMonth = ref(initialRange.from);
+    const toMonth = ref(initialRange.to);
 
-    // Everything on this page comes from /admin/analytics (paid orders only)
-    const metrics = computed(() => store.getters['admin/analyticsData'] || {});
+    const activePreset = computed(() => Object.keys(PRESETS).find((key) => {
+      const range = presetRange(key);
+      return range.from === fromMonth.value && range.to === toMonth.value;
+    }) || null);
+
+    const applyPreset = (key) => {
+      const range = presetRange(key);
+      fromMonth.value = range.from;
+      toMonth.value = range.to;
+    };
+
+    // e.g. "1 Nov 2025 – 31 Oct 2026"
+    const rangeLabel = computed(() => {
+      const [fromYear, fromMon] = fromMonth.value.split('-').map(Number);
+      const [toYear, toMon] = toMonth.value.split('-').map(Number);
+      const lastDay = new Date(toYear, toMon, 0).getDate();
+      return `1 ${MONTH_NAMES[fromMon - 1]} ${fromYear} – ${lastDay} ${MONTH_NAMES[toMon - 1]} ${toYear}`;
+    });
+
+    const monthsLabel = computed(() => {
+      const [fromYear, fromMon] = fromMonth.value.split('-').map(Number);
+      const [toYear, toMon] = toMonth.value.split('-').map(Number);
+      const months = (toYear - fromYear) * 12 + (toMon - fromMon) + 1;
+      return months === 1 ? 'month' : `${months} months`;
+    });
+
+    // The cards and lists below come from /admin/analytics for the selected period (paid orders only).
+    // Kept local so the Dashboard's all-time figures in the store are untouched.
+    const metrics = ref({});
+    const isLoading = ref(false);
+    let latestRequest = 0; // ignore responses for a period the user has already moved away from
+    const loadAnalytics = async () => {
+      const requestId = ++latestRequest;
+      isLoading.value = true;
+      try {
+        const res = await fetchAnalyticsReportApi({ from: fromMonth.value, to: toMonth.value });
+        if (requestId === latestRequest) metrics.value = res.data;
+      } catch (err) {
+        if (requestId === latestRequest) ErrorToast('Could not load analytics', err.parsedMessage || err.message);
+      } finally {
+        if (requestId === latestRequest) isLoading.value = false;
+      }
+    };
+    watch([fromMonth, toMonth], loadAnalytics);
+
     const money = (n) => Number(n || 0).toFixed(2);
     const pct = (part, whole) => (whole ? Math.round((part || 0) / whole * 1000) / 10 : 0);
 
@@ -238,14 +333,14 @@ export default {
     };
 
     onMounted(() => {
-      store.dispatch('admin/fetchAnalytics');
+      loadAnalytics();
       loadReports();
     });
 
     const generateReport = async () => {
       isGenerating.value = true;
       try {
-        const res = await generateReportApi(reportType.value);
+        const res = await generateReportApi(reportType.value, { from: fromMonth.value, to: toMonth.value });
         SuccessToast('Report Saved', `${res.data.report.title} was generated and saved.`);
         await loadReports();
       } catch (err) {
@@ -273,6 +368,14 @@ export default {
     };
 
     return {
+      PRESETS,
+      fromMonth,
+      toMonth,
+      activePreset,
+      applyPreset,
+      rangeLabel,
+      monthsLabel,
+      isLoading,
       metrics,
       money,
       pct,
